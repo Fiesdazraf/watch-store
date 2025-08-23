@@ -1,0 +1,19 @@
+# Virtual environment
+.venv/
+
+# Python cache
+__pycache__/
+*.pyc
+
+# SQLite DB (local only)
+db.sqlite3
+
+# Environment files
+.env
+
+# Static collected files
+/staticfiles/
+
+# IDE/editor configs
+.idea/
+.vscode/
