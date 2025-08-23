@@ -16,8 +16,22 @@ Including another URLconf
 """
 
 from django.contrib import admin
+from django.http import HttpResponse
 from django.urls import path
+
+
+def healthcheck(_):
+    # Simple health endpoint
+    return HttpResponse("OK")
+
+
+def home(_):
+    # Temporary home page
+    return HttpResponse("<h1>Watch Store - Setup Compelete (Phase 1)</h1>")
+
 
 urlpatterns = [
     path("admin/", admin.site.urls),
+    path("health/", healthcheck, name="health"),
+    path("", home, name="home"),
 ]

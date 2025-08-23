@@ -1,0 +1,25 @@
+<!doctype html>
+<html lang="fa" dir="rtl">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>{% block title %}فروشگاه ساعت{% endblock %}</title>
+  <meta name="description" content="{% block meta_description %}Phase 1: Project Setup{% endblock %}">
+  <link rel="stylesheet" href="/static/shop/base.css">
+</head>
+<body>
+  <header>
+    <nav>
+      <a href="/">خانه</a> | <a href="/admin/">مدیریت</a>
+    </nav>
+  </header>
+
+  <main>
+    {% block content %}{% endblock %}
+  </main>
+
+  <footer>
+    <small>© Watch Store — Phase 1</small>
+  </footer>
+</body>
+</html>
