@@ -36,6 +36,9 @@ USE_TZ = True
 
 # Application definition
 INSTALLED_APPS = [
+    "apps.catalog",
+    "apps.customers",
+    "apps.orders",
     "django.contrib.admin",
     "django.contrib.auth",
     "django.contrib.contenttypes",
