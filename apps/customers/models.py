@@ -1,6 +1,8 @@
 from django.contrib.auth import get_user_model
 from django.db import models
+
 User = get_user_model()
+
 
 class CustomerProfile(models.Model):
     # Basic customer profile (extend later)
@@ -18,7 +20,9 @@ class CustomerProfile(models.Model):
 
 class Address(models.Model):
     # Shipping/Billing address (keep simple for MVP)
-    customer = models.ForeignKey(CustomerProfile, on_delete=models.CASCADE, related_name="addresses")
+    customer = models.ForeignKey(
+        CustomerProfile, on_delete=models.CASCADE, related_name="addresses"
+    )
     full_name = models.CharField(max_length=140)
     line1 = models.CharField(max_length=200)
     line2 = models.CharField(max_length=200, blank=True)

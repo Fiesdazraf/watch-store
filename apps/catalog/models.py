@@ -1,6 +1,7 @@
 from django.db import models
 from django.utils.text import slugify
 
+
 class Brand(models.Model):
     # Watch brand (e.g., Seiko, Omega)
     name = models.CharField(max_length=120, unique=True)
@@ -30,7 +31,9 @@ class Product(models.Model):
     title = models.CharField(max_length=200)
     slug = models.SlugField(max_length=220, unique=True)
     brand = models.ForeignKey(Brand, on_delete=models.PROTECT, related_name="products")
-    collection = models.ForeignKey(Collection, on_delete=models.SET_NULL, null=True, blank=True, related_name="products")
+    collection = models.ForeignKey(
+        Collection, on_delete=models.SET_NULL, null=True, blank=True, related_name="products"
+    )
     sku = models.CharField(max_length=64, unique=True)
     price = models.DecimalField(max_digits=10, decimal_places=2)  # base currency (config later)
     is_active = models.BooleanField(default=True)
