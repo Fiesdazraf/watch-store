@@ -1,11 +1,12 @@
 from django.contrib import admin
-from .models import CustomerProfile, Address
+from .models import Customer, Address
 
 
-@admin.register(CustomerProfile)
-class CustomerProfileAdmin(admin.ModelAdmin):
-    list_display = ("user", "phone", "created_at")
-    search_fields = ("user__username", "phone")
+@admin.register(Customer)
+class CustomerAdmin(admin.ModelAdmin):
+    list_display = ("user", "phone", "marketing_opt_in", "created_at")
+    search_fields = ("user__username", "user__email", "phone")
+    list_filter = ("marketing_opt_in", "created_at")
 
 
 @admin.register(Address)

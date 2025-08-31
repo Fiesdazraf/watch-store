@@ -10,21 +10,23 @@ For the full list of settings and their values, see
 https://docs.djangoproject.com/en/5.2/ref/settings/
 """
 
-import os
 from pathlib import Path
-
+import os
+import dj_database_url
 from dotenv import load_dotenv
 
-# Load environment variables
-BASE_DIR = Path(__file__).resolve().parents[2]  # up to project root
+# ---------- Paths ----------
+BASE_DIR = Path(__file__).resolve().parent.parent.parent  # <project-root>
+
+# ---------- Env ----------
 env_path = BASE_DIR / ".env"
 if env_path.exists():
     load_dotenv(env_path, override=True)
 
 # Core
 SECRET_KEY = os.getenv("DJANGO_SECRET_KEY", "insecure-key")
-DEBUG = os.getenv("DJANGO_DEBUG", "False") == "True"
-ALLOWED_HOSTS = [h.strip() for h in os.getenv("DJANGO_ALLOWED_HOSTS", "").split(",") if h.strip()]
+DEBUG = os.getenv("DJANGO_DEBUG", "True") == "True"   # برای لوکال پیش‌فرض True
+ALLOWED_HOSTS = [h.strip() for h in os.getenv("DJANGO_ALLOWED_HOSTS", "localhost,127.0.0.1").split(",") if h.strip()]
 
 # Internationalization
 LANGUAGE_CODE = "en-us"
@@ -32,7 +34,7 @@ TIME_ZONE = os.getenv("TIME_ZONE", "Asia/Tehran")
 USE_I18N = True
 USE_TZ = True
 
-# Application definition
+# ---------- Apps ----------
 INSTALLED_APPS = [
     "apps.catalog",
     "apps.customers",
@@ -43,12 +45,11 @@ INSTALLED_APPS = [
     "django.contrib.sessions",
     "django.contrib.messages",
     "django.contrib.staticfiles",
-    # domain apps (will be added in later phases)
 ]
 
 MIDDLEWARE = [
     "django.middleware.security.SecurityMiddleware",
-    "whitenoise.middleware.WhiteNoiseMiddleware",  # static files in prod
+    "whitenoise.middleware.WhiteNoiseMiddleware",
     "django.contrib.sessions.middleware.SessionMiddleware",
     "django.middleware.common.CommonMiddleware",
     "django.middleware.locale.LocaleMiddleware",
@@ -59,11 +60,13 @@ MIDDLEWARE = [
 ]
 
 ROOT_URLCONF = "config.urls"
+WSGI_APPLICATION = "config.wsgi.application"
+ASGI_APPLICATION = "config.asgi.application"
 
 TEMPLATES = [
     {
         "BACKEND": "django.template.backends.django.DjangoTemplates",
-        "DIRS": [BASE_DIR / "templates"],  # use templates folder
+        "DIRS": [BASE_DIR / "templates"],
         "APP_DIRS": True,
         "OPTIONS": {
             "context_processors": [
@@ -76,18 +79,19 @@ TEMPLATES = [
     },
 ]
 
-WSGI_APPLICATION = "config.wsgi.application"
-ASGI_APPLICATION = "config.asgi.application"
-
-# Database (default: SQLite; override in dev/prod)
-DATABASES = {
-    "default": {
-        "ENGINE": "django.db.backends.sqlite3",
-        "NAME": BASE_DIR / "db.sqlite3",
+# ---------- Database (robust) ----------
+db_url = (os.getenv("DATABASE_URL") or "").strip()
+if db_url:
+    DATABASES = {"default": dj_database_url.parse(db_url, conn_max_age=600)}
+else:
+    DATABASES = {
+        "default": {
+            "ENGINE": "django.db.backends.sqlite3",
+            "NAME": BASE_DIR / "db.sqlite3",
+        }
     }
-}
 
-# Password validation
+# ---------- Passwords ----------
 AUTH_PASSWORD_VALIDATORS = [
     {"NAME": "django.contrib.auth.password_validation.UserAttributeSimilarityValidator"},
     {"NAME": "django.contrib.auth.password_validation.MinimumLengthValidator"},
@@ -95,15 +99,14 @@ AUTH_PASSWORD_VALIDATORS = [
     {"NAME": "django.contrib.auth.password_validation.NumericPasswordValidator"},
 ]
 
-# Static files
+# ---------- Static ----------
 STATIC_URL = "/static/"
-STATICFILES_DIRS = [BASE_DIR / "static"]
+STATICFILES_DIRS = [BASE_DIR / "static"]  # اطمینان بده پوشه static وجود داره
 STATIC_ROOT = BASE_DIR / "staticfiles"
 STATICFILES_STORAGE = "whitenoise.storage.CompressedManifestStaticFilesStorage"
 
-# Security defaults (override in prod)
-SESSION_COOKIE_SECURE = False
-CSRF_COOKIE_SECURE = False
+# ---------- Security (override in prod) ----------
+SESSION_COOKIE_SECURE = os.getenv("SESSION_COOKIE_SECURE", "False") == "True"
+CSRF_COOKIE_SECURE = os.getenv("CSRF_COOKIE_SECURE", "False") == "True"
 
-# Default primary key
 DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
