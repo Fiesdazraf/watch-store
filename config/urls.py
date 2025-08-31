@@ -17,7 +17,7 @@ Including another URLconf
 
 from django.contrib import admin
 from django.http import HttpResponse
-from django.urls import path
+from django.urls import path, include
 
 
 def healthcheck(_):
@@ -34,4 +34,6 @@ urlpatterns = [
     path("admin/", admin.site.urls),
     path("health/", healthcheck, name="health"),
     path("", home, name="home"),
+    path("", include("apps.catalogue.urls", namespace="catalog")),
+    path("", include("apps.orders.urls", namespace="orders")),
 ]
