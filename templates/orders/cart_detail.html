@@ -1,0 +1,28 @@
+<h1>Your Cart</h1>
+<table>
+  <tr><th>Product</th><th>Unit</th><th>Qty</th><th>Total</th><th></th></tr>
+  {% for it in items %}
+  <tr>
+    <td>{{ it.product.title }}</td>
+    <td>{{ it.unit_price }}</td>
+    <td>
+      <form action="{% url 'orders:update_cart_item' it.id %}" method="post">
+        {% csrf_token %}
+        <input type="number" name="qty" min="0" value="{{ it.quantity }}">
+        <button type="submit">Update</button>
+      </form>
+    </td>
+    <td>{{ it.subtotal }}</td>
+    <td>
+      <form action="{% url 'orders:remove_cart_item' it.id %}" method="post">
+        {% csrf_token %}
+        <button type="submit">Remove</button>
+      </form>
+    </td>
+  </tr>
+  {% empty %}
+  <tr><td colspan="5">Cart is empty.</td></tr>
+  {% endfor %}
+</table>
+
+<h3>Subtotal: {{ cart.get_subtotal }}</h3>

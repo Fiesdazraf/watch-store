@@ -1,0 +1,10 @@
+<h1>{{ product.title }}</h1>
+<p>Brand: {{ product.brand.name }}</p>
+<p>Price: {{ product.price }}</p>
+
+<form action="{% url 'orders:add_to_cart' product.id %}" method="post">
+  {% csrf_token %}
+  <label>Qty:</label>
+  <input type="number" name="qty" min="1" value="1">
+  <button type="submit">Add to cart</button>
+</form>

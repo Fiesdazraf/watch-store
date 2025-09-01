@@ -1,0 +1,46 @@
+{% load static %}
+<h1>Shop</h1>
+
+<form method="get">
+  <input type="text" name="q" placeholder="Search..." value="{{ request.GET.q }}">
+  <select name="brand">
+    <option value="">All brands</option>
+    {% for b in brands %}<option value="{{ b.slug }}" {% if request.GET.brand == b.slug %}selected{% endif %}>{{ b.name }}</option>{% endfor %}
+  </select>
+  <select name="category">
+    <option value="">All categories</option>
+    {% for c in categories %}<option value="{{ c.slug }}" {% if request.GET.category == c.slug %}selected{% endif %}>{{ c.name }}</option>{% endfor %}
+  </select>
+  <input type="number" name="price_min" step="0.01" placeholder="Min" value="{{ request.GET.price_min }}">
+  <input type="number" name="price_max" step="0.01" placeholder="Max" value="{{ request.GET.price_max }}">
+  <select name="order">
+    <option value="">Newest</option>
+    <option value="price_asc" {% if request.GET.order == "price_asc" %}selected{% endif %}>Price ↑</option>
+    <option value="price_desc" {% if request.GET.order == "price_desc" %}selected{% endif %}>Price ↓</option>
+  </select>
+  <button type="submit">Filter</button>
+</form>
+
+<ul>
+  {% for p in products %}
+    <li>
+      <a href="{% url 'catalog:product_detail' p.slug %}">{{ p.title }}</a>
+      — {{ p.brand.name }} — {{ p.price }}
+      <form action="{% url 'orders:add_to_cart' p.id %}" method="post" style="display:inline">
+        {% csrf_token %}
+        <input type="hidden" name="qty" value="1">
+        <button type="submit">Add to cart</button>
+      </form>
+    </li>
+  {% empty %}
+    <li>No products</li>
+  {% endfor %}
+</ul>
+
+<div>
+  {% if is_paginated %}
+    {% if page_obj.has_previous %}<a href="?page={{ page_obj.previous_page_number }}">&laquo; Prev</a>{% endif %}
+    Page {{ page_obj.number }} of {{ page_obj.paginator.num_pages }}
+    {% if page_obj.has_next %}<a href="?page={{ page_obj.next_page_number }}">Next &raquo;</a>{% endif %}
+  {% endif %}
+</div>

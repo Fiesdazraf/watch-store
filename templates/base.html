@@ -1,25 +1,46 @@
-<!doctype html>
+{% load static %}
+<!DOCTYPE html>
 <html lang="fa" dir="rtl">
 <head>
-  <meta charset="utf-8" />
-  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+
   <title>{% block title %}فروشگاه ساعت{% endblock %}</title>
-  <meta name="description" content="{% block meta_description %}Phase 1: Project Setup{% endblock %}">
-  <link rel="stylesheet" href="/static/shop/base.css">
+  <meta name="description" content="{% block meta_description %}خرید آنلاین انواع ساعت مچی مردانه، زنانه و اسپرت{% endblock %}">
+
+  <!-- CSS -->
+  <link rel="stylesheet" href="{% static 'shop/base.css' %}">
+  {% block extra_css %}{% endblock %}
 </head>
-<body>
-  <header>
-    <nav>
-      <a href="/">خانه</a> | <a href="/admin/">مدیریت</a>
-    </nav>
+<body class="min-h-screen flex flex-col bg-gray-50 text-gray-900">
+
+  <!-- Header -->
+  <header class="bg-white shadow-md">
+    <div class="container mx-auto px-4 py-3 flex justify-between items-center">
+      <a href="/" class="text-lg font-bold">🕒 Watch Store</a>
+      <nav class="space-x-4 space-x-reverse">
+        <a href="/" class="hover:text-blue-600">خانه</a>
+        <a href="{% url 'catalog:product_list' %}" class="hover:text-blue-600">فروشگاه</a>
+        <a href="{% url 'orders:cart_detail' %}" class="hover:text-blue-600">سبد خرید</a>
+        <a href="/admin/" class="hover:text-blue-600">مدیریت</a>
+      </nav>
+    </div>
   </header>
 
-  <main>
+  <!-- Main Content -->
+  <main class="flex-grow container mx-auto px-4 py-6">
     {% block content %}{% endblock %}
   </main>
 
-  <footer>
-    <small>© Watch Store — Phase 1</small>
+  <!-- Footer -->
+  <footer class="bg-gray-900 text-gray-200">
+    <div class="container mx-auto px-4 py-4 flex justify-between items-center text-sm">
+      <span>© {{ now|date:"Y" }} Watch Store</span>
+      <span>ساخته شده با Django ♥</span>
+    </div>
   </footer>
+
+  <!-- Scripts -->
+  {% block extra_js %}{% endblock %}
 </body>
 </html>
