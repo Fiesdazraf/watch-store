@@ -5,26 +5,23 @@ from django.db.models import Q, UniqueConstraint
 
 
 phone_validator = RegexValidator(
-    regex=r"^\+?[0-9\s\-()]{6,20}$",
-    message="Enter a valid phone number."
+    regex=r"^\+?[0-9\s\-()]{6,20}$", message="Enter a valid phone number."
 )
 
 
 class Customer(models.Model):
     user = models.OneToOneField(
-        settings.AUTH_USER_MODEL,
-        on_delete=models.CASCADE,
-        related_name='customer'
+        settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name="customer"
     )
     phone = models.CharField(max_length=20, blank=True, validators=[phone_validator])
     marketing_opt_in = models.BooleanField(default=False)
     created_at = models.DateTimeField(auto_now_add=True)
 
     class Meta:
-        ordering = ['-created_at']
+        ordering = ["-created_at"]
         indexes = [
-            models.Index(fields=['created_at']),
-            models.Index(fields=['phone']),
+            models.Index(fields=["created_at"]),
+            models.Index(fields=["phone"]),
         ]
 
     def __str__(self):
@@ -33,9 +30,7 @@ class Customer(models.Model):
 
 
 class Address(models.Model):
-    customer = models.ForeignKey(
-        Customer, related_name='addresses', on_delete=models.CASCADE
-    )
+    customer = models.ForeignKey(Customer, related_name="addresses", on_delete=models.CASCADE)
     full_name = models.CharField(max_length=120)
     line1 = models.CharField(max_length=180)
     line2 = models.CharField(max_length=180, blank=True)
@@ -43,22 +38,22 @@ class Address(models.Model):
     state = models.CharField(max_length=80, blank=True)
     postal_code = models.CharField(max_length=20)
     country = models.CharField(
-        max_length=2, default='GB', help_text="ISO 3166-1 alpha-2 (e.g. GB, US, IR)"
+        max_length=2, default="GB", help_text="ISO 3166-1 alpha-2 (e.g. GB, US, IR)"
     )
     is_default = models.BooleanField(default=False)
 
     class Meta:
-        ordering = ['-is_default', 'id']
+        ordering = ["-is_default", "id"]
         indexes = [
-            models.Index(fields=['customer', 'is_default']),
-            models.Index(fields=['postal_code']),
+            models.Index(fields=["customer", "is_default"]),
+            models.Index(fields=["postal_code"]),
         ]
         constraints = [
             # Only one default address per customer
             UniqueConstraint(
-                fields=['customer'],
+                fields=["customer"],
                 condition=Q(is_default=True),
-                name='uniq_default_address_per_customer'
+                name="uniq_default_address_per_customer",
             )
         ]
 
@@ -76,7 +71,6 @@ class Address(models.Model):
 
         # Ensure only one default address per customer (app-level enforcement)
         if self.is_default:
-            Address.objects.filter(
-                customer=self.customer,
-                is_default=True
-            ).exclude(pk=self.pk).update(is_default=False)
+            Address.objects.filter(customer=self.customer, is_default=True).exclude(
+                pk=self.pk
+            ).update(is_default=False)

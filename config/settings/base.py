@@ -25,8 +25,12 @@ if env_path.exists():
 
 # Core
 SECRET_KEY = os.getenv("DJANGO_SECRET_KEY", "insecure-key")
-DEBUG = os.getenv("DJANGO_DEBUG", "True") == "True"   # برای لوکال پیش‌فرض True
-ALLOWED_HOSTS = [h.strip() for h in os.getenv("DJANGO_ALLOWED_HOSTS", "localhost,127.0.0.1").split(",") if h.strip()]
+DEBUG = os.getenv("DJANGO_DEBUG", "True") == "True"  # برای لوکال پیش‌فرض True
+ALLOWED_HOSTS = [
+    h.strip()
+    for h in os.getenv("DJANGO_ALLOWED_HOSTS", "localhost,127.0.0.1").split(",")
+    if h.strip()
+]
 
 # Internationalization
 LANGUAGE_CODE = "en-us"
@@ -39,6 +43,7 @@ INSTALLED_APPS = [
     "apps.catalog",
     "apps.customers",
     "apps.orders",
+    "apps.accounts",
     "django.contrib.admin",
     "django.contrib.auth",
     "django.contrib.contenttypes",
@@ -91,10 +96,19 @@ else:
         }
     }
 
+
+AUTH_USER_MODEL = "accounts.User"  # very important
+LOGIN_URL = "accounts:login"
+LOGIN_REDIRECT_URL = "accounts:dashboard"
+LOGOUT_REDIRECT_URL = "home"  # یا هر صفحه‌ای که داری
+
+EMAIL_BACKEND = "django.core.mail.backends.console.EmailBackend"
+DEFAULT_FROM_EMAIL = "noreply@example.com"
+
 # ---------- Passwords ----------
 AUTH_PASSWORD_VALIDATORS = [
     {"NAME": "django.contrib.auth.password_validation.UserAttributeSimilarityValidator"},
-    {"NAME": "django.contrib.auth.password_validation.MinimumLengthValidator"},
+    {"NAME": "django.contrib.auth.password_validation.MinimumLengthValidator","OPTIONS": {"min_length": 8}},
     {"NAME": "django.contrib.auth.password_validation.CommonPasswordValidator"},
     {"NAME": "django.contrib.auth.password_validation.NumericPasswordValidator"},
 ]

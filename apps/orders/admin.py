@@ -24,6 +24,7 @@ class CartAdmin(admin.ModelAdmin):
 
     def subtotal(self, obj):
         return obj.get_subtotal()
+
     subtotal.short_description = "Subtotal"
 
 

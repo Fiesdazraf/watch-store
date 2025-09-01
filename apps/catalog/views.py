@@ -2,6 +2,7 @@ from django.views.generic import ListView, DetailView
 from django.db.models import Q
 from .models import Product, Brand, Category
 
+
 class ProductListView(ListView):
     model = Product
     template_name = "catalog/product_list.html"
@@ -9,7 +10,9 @@ class ProductListView(ListView):
     paginate_by = 12
 
     def get_queryset(self):
-        qs = Product.objects.select_related("brand", "collection", "category").filter(is_active=True)
+        qs = Product.objects.select_related("brand", "collection", "category").filter(
+            is_active=True
+        )
         q = self.request.GET.get("q")
         brand = self.request.GET.get("brand")
         cat = self.request.GET.get("category")
@@ -18,7 +21,9 @@ class ProductListView(ListView):
         order = self.request.GET.get("order")
 
         if q:
-            qs = qs.filter(Q(title__icontains=q) | Q(sku__icontains=q) | Q(brand__name__icontains=q))
+            qs = qs.filter(
+                Q(title__icontains=q) | Q(sku__icontains=q) | Q(brand__name__icontains=q)
+            )
         if brand:
             qs = qs.filter(brand__slug=brand)
         if cat:

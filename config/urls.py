@@ -33,6 +33,7 @@ def home(_):
 urlpatterns = [
     path("admin/", admin.site.urls),
     path("health/", healthcheck, name="health"),
+    path("accounts/", include("apps.accounts.urls")),
     path("", home, name="home"),
     path("", include("apps.catalog.urls", namespace="catalog")),
     path("", include("apps.orders.urls", namespace="orders")),

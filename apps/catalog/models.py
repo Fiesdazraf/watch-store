@@ -7,15 +7,20 @@ class Category(models.Model):
     """
     Hierarchical category (e.g. Men > Luxury > Rolex, or Unisex > Entry-level).
     """
-    name = models.CharField(max_length=120)  # no global unique (allow same name under different parents)
-    slug = models.SlugField(max_length=140, blank=True)  # uniqueness handled via UniqueConstraint below
+
+    name = models.CharField(
+        max_length=120
+    )  # no global unique (allow same name under different parents)
+    slug = models.SlugField(
+        max_length=140, blank=True
+    )  # uniqueness handled via UniqueConstraint below
     parent = models.ForeignKey(
         "self",
         on_delete=models.CASCADE,
         related_name="children",
         null=True,
         blank=True,
-        help_text="Parent category for nesting (leave empty for a root category)."
+        help_text="Parent category for nesting (leave empty for a root category).",
     )
 
     class Meta:
@@ -28,7 +33,9 @@ class Category(models.Model):
         constraints = [
             UniqueConstraint(fields=["parent", "name"], name="uniq_category_name_per_parent"),
             UniqueConstraint(fields=["parent", "slug"], name="uniq_category_slug_per_parent"),
-            models.CheckConstraint(check=~models.Q(id=models.F("parent")), name="category_parent_not_self"),
+            models.CheckConstraint(
+                check=~models.Q(id=models.F("parent")), name="category_parent_not_self"
+            ),
         ]
 
     def __str__(self):
@@ -50,6 +57,7 @@ class Brand(models.Model):
     """
     Watch brand (e.g., Seiko, Omega, Rolex).
     """
+
     name = models.CharField(max_length=120, unique=True)
     slug = models.SlugField(max_length=140, unique=True, blank=True)
     # Optional: attach a brand to a category node (e.g., Men > Luxury)
@@ -59,7 +67,7 @@ class Brand(models.Model):
         null=True,
         blank=True,
         related_name="brands",
-        help_text="Optional: place brand under a specific category node."
+        help_text="Optional: place brand under a specific category node.",
     )
 
     class Meta:
@@ -79,6 +87,7 @@ class Collection(models.Model):
     """
     Product grouping/line (e.g., Diver, Dress, Chronograph).
     """
+
     name = models.CharField(max_length=140, unique=True)
     slug = models.SlugField(max_length=160, unique=True, blank=True)
     # Optional: collections can also live under a category (e.g., Men > Sport)
@@ -88,7 +97,7 @@ class Collection(models.Model):
         null=True,
         blank=True,
         related_name="collections",
-        help_text="Optional: place collection under a specific category node."
+        help_text="Optional: place collection under a specific category node.",
     )
 
     class Meta:
@@ -108,12 +117,11 @@ class Product(models.Model):
     """
     Minimal product for MVP, now linked to hierarchical Category.
     """
+
     title = models.CharField(max_length=200)
     slug = models.SlugField(max_length=220, unique=True, blank=True)
 
-    brand = models.ForeignKey(
-        Brand, on_delete=models.PROTECT, related_name="products"
-    )
+    brand = models.ForeignKey(Brand, on_delete=models.PROTECT, related_name="products")
     collection = models.ForeignKey(
         Collection,
         on_delete=models.SET_NULL,
@@ -127,7 +135,7 @@ class Product(models.Model):
         null=True,
         blank=True,
         related_name="products",
-        help_text="Attach product to the most specific category node (optional)."
+        help_text="Attach product to the most specific category node (optional).",
     )
 
     sku = models.CharField(max_length=64, unique=True)
@@ -159,10 +167,11 @@ class ProductVariant(models.Model):
     """
     A simple variant model to represent options like strap/color/size, each with its own SKU/stock.
     """
+
     product = models.ForeignKey(Product, related_name="variants", on_delete=models.CASCADE)
     sku = models.CharField(max_length=40, unique=True)
-    attribute = models.CharField(max_length=60)   # e.g. "strap", "color", "size"
-    value = models.CharField(max_length=60)       # e.g. "leather - brown", "blue", "42mm"
+    attribute = models.CharField(max_length=60)  # e.g. "strap", "color", "size"
+    value = models.CharField(max_length=60)  # e.g. "leather - brown", "blue", "42mm"
     extra_price = models.DecimalField(max_digits=8, decimal_places=2, default=0)
     stock = models.PositiveIntegerField(default=0)
 
@@ -191,4 +200,4 @@ class ProductImage(models.Model):
     is_primary = models.BooleanField(default=False)
 
     class Meta:
-        ordering = ['-is_primary', 'id']
+        ordering = ["-is_primary", "id"]

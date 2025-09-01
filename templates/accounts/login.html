@@ -1,0 +1,15 @@
+{% extends "main/base.html" %}
+{% block title %}Login{% endblock %}
+{% block content %}
+<section class="container mx-auto max-w-md py-10">
+  <h1 class="text-2xl font-bold mb-6 text-center">Login</h1>
+  <form method="post" class="space-y-4">
+    {% csrf_token %}
+    {{ form.as_p }}
+    <button class="btn btn-primary w-full">Login</button>
+  </form>
+  <div class="mt-4 text-center">
+    <a href="{% url 'accounts:password_reset' %}" class="text-sm underline">Forgot password?</a>
+  </div>
+</section>
+{% endblock %}
