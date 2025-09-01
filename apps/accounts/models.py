@@ -36,6 +36,8 @@ class User(AbstractBaseUser, PermissionsMixin):
     email = models.EmailField(unique=True)
     full_name = models.CharField(max_length=50, blank=True)
     phone_number = models.CharField(max_length=20, blank=True, validators=[phone_validator])
+    is_active = models.BooleanField(default=False)  # user cannot login until email verified
+    email_verified = models.BooleanField(default=False)
 
     objects = UserManager()
 

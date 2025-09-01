@@ -49,24 +49,23 @@ class ProductImageInline(admin.TabularInline):
     model = ProductImage
     extra = 1
     fields = ("image", "alt", "is_primary")
-    readonly_fields = ("is_primary",)
 
 
 # -----------------------------
 # Product
 # -----------------------------
+@admin.register(ProductVariant)
+class ProductVariantAdmin(admin.ModelAdmin):
+    list_display = ("sku", "product", "extra_price", "stock", "is_active")
+    search_fields = ("sku", "product__title", "product__brand__name")
+    list_select_related = ("product", "product__brand")
+    list_filter = ("is_active", "product__brand")
+    autocomplete_fields = ("product",)  # سریع‌تر برای دیتابیس بزرگ
+
 @admin.register(Product)
 class ProductAdmin(admin.ModelAdmin):
-    list_display = (
-        "title",
-        "brand",
-        "collection",
-        "category",
-        "price",
-        "is_active",
-        "created_at",
-    )
-    list_filter = ("brand", "collection", "category", "is_active")
-    search_fields = ("title", "sku")
-    prepopulated_fields = {"slug": ("title",)}
+    list_display = ("title", "brand", "price", "is_active")
+    search_fields = ("title", "brand__name")  
+    list_select_related = ("brand",)
+    list_filter = ("is_active", "brand")
     inlines = [ProductVariantInline, ProductImageInline]

@@ -111,6 +111,8 @@ class Order(models.Model):
     placed_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
     notes = models.TextField(blank=True)
+    
+    number = models.CharField(max_length=16, unique=True, blank=True)
 
     class Meta:
         ordering = ["-placed_at"]
@@ -119,8 +121,6 @@ class Order(models.Model):
             models.Index(fields=["placed_at"]),
         ]
 
-    def __str__(self):
-        return f"Order #{self.id} - {self.get_status_display()}"
 
     def recalc_totals(self, save: bool = True) -> Decimal:
         self.subtotal = sum((item.total_price for item in self.items.all()), Decimal("0.00"))
@@ -129,6 +129,14 @@ class Order(models.Model):
             self.save(update_fields=["subtotal", "grand_total", "updated_at"])
         return self.grand_total
 
+    def save(self, *args, **kwargs):
+        new = self.pk is None
+        super().save(*args, **kwargs)
+        if new and not self.number:
+            self.number = f"SW{self.id:08d}"  # e.g., SW00000042
+            super().save(update_fields=["number"])
+    def __str__(self):
+        return f"Order {self.number or self.id} - {self.get_status_display()}"
 
 class OrderItem(models.Model):
     order = models.ForeignKey(Order, related_name="items", on_delete=models.CASCADE)

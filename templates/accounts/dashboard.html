@@ -1,0 +1,12 @@
+{% extends "main/base.html" %}
+{% block title %}Dashboard{% endblock %}
+{% block content %}
+<section class="container mx-auto py-10 max-w-screen-lg">
+  <h1 class="text-2xl font-bold mb-6">Dashboard</h1>
+  <ul class="list-disc pl-6 space-y-1">
+    <li><a class="underline" href="{% url 'accounts:profile' %}">Profile</a></li>
+    <li><a class="underline" href="{% url 'accounts:address_list' %}">Addresses</a></li>
+    <li><a class="underline" href="{% url 'orders:order_history' %}">Orders</a></li>
+  </ul>
+</section>
+{% endblock %}

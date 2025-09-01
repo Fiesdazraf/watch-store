@@ -171,6 +171,7 @@ class ProductVariant(models.Model):
     product = models.ForeignKey(Product, related_name="variants", on_delete=models.CASCADE)
     sku = models.CharField(max_length=40, unique=True)
     attribute = models.CharField(max_length=60)  # e.g. "strap", "color", "size"
+    is_active = models.BooleanField(default=True)
     value = models.CharField(max_length=60)  # e.g. "leather - brown", "blue", "42mm"
     extra_price = models.DecimalField(max_digits=8, decimal_places=2, default=0)
     stock = models.PositiveIntegerField(default=0)

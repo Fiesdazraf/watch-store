@@ -5,6 +5,7 @@ from .models import Address
 
 User = get_user_model()
 
+
 class RegisterForm(forms.ModelForm):
     password1 = forms.CharField(label="Password", widget=forms.PasswordInput)
     password2 = forms.CharField(label="Confirm Password", widget=forms.PasswordInput)
@@ -27,12 +28,24 @@ class RegisterForm(forms.ModelForm):
             user.save()
         return user
 
+
 class ProfileForm(forms.ModelForm):
     class Meta:
         model = User
         fields = ["full_name", "phone_number"]
 
+
 class AddressForm(forms.ModelForm):
     class Meta:
         model = Address
-        fields = ["full_name", "phone_number", "line1", "line2", "city", "state", "postal_code", "country", "is_default"]
+        fields = [
+            "full_name",
+            "phone_number",
+            "line1",
+            "line2",
+            "city",
+            "state",
+            "postal_code",
+            "country",
+            "is_default",
+        ]
