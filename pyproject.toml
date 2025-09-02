@@ -1,16 +1,33 @@
 [tool.black]
 line-length = 100
 target-version = ["py311"]
+exclude = '''
+/(
+  \.venv
+  | \.git
+  | \.mypy_cache
+  | \.pytest_cache
+  | migrations
+)/
+'''
 
 [tool.isort]
 profile = "black"
 line_length = 100
+skip = ["migrations", ".venv"]
+
+[tool.autoflake]
+remove-all-unused-imports = true
+remove-unused-variables = true
+in-place = true
+recursive = true
 
 [tool.ruff]
 line-length = 100
+exclude = [".venv", "migrations", ".git", "__pycache__"]
 
 [tool.ruff.lint]
-select = ["E","F","I","UP"]
+select = ["E", "F", "I", "UP"]
 
 [tool.ruff.lint.per-file-ignores]
 "config/settings/dev.py" = ["F401", "F403"]

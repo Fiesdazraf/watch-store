@@ -1,7 +1,9 @@
 # apps/orders/services.py
 from decimal import Decimal
+
 from django.db import transaction
-from .models import Order, OrderItem, CartItem
+
+from .models import CartItem, Order, OrderItem
 
 
 @transaction.atomic

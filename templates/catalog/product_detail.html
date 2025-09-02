@@ -1,26 +1,116 @@
-<h1>{{ product.title }}</h1>
-<p>Brand: {{ product.brand.name }}</p>
-<p>Base price: {{ product.price }}</p>
+{% extends "base.html" %}
+{% load static %}
+{% block title %}{{ product.title }}{% endblock %}
 
-<form action="{% url 'orders:add_to_cart' product.id %}" method="post">
-  {% csrf_token %}
+{% block content %}
+<section class="section pt-5">
+  <div class="container">
 
-  {% if product.variants.all %}
-    <label for="variant_id">Variant:</label>
-    <select name="variant_id" id="variant_id" required>
-      {% for v in product.variants.all %}
-        <option value="{{ v.id }}">
-          {{ v.attribute }}: {{ v.value }}{% if v.extra_price and v.extra_price|floatformat != '0' %} (+{{ v.extra_price }}){% endif %}
-          {% if v.stock == 0 %} - Out of stock{% endif %}
-        </option>
-      {% endfor %}
-    </select>
-  {% endif %}
+    <!-- Breadcrumb (optional) -->
+    <nav class="breadcrumb is-small has-succeeds-separator" aria-label="breadcrumbs">
+      <ul>
+        <li><a href="{% url 'catalog:product_list' %}">فروشگاه</a></li>
+        {% if product.brand %}<li><a href="?brand={{ product.brand.slug }}">{{ product.brand.name }}</a></li>{% endif %}
+        <li class="is-active"><a aria-current="page">{{ product.title }}</a></li>
+      </ul>
+    </nav>
 
-  <label>Qty:</label>
-  <input type="number" name="qty" min="1" value="1">
-  <button type="submit">Add to cart</button>
-</form>
+    <div class="columns is-variable is-6">
+      <!-- Gallery -->
+      <div class="column is-5">
+        <figure class="image is-3by2">
+          {% if product.primary_image %}
+            <img src="{{ product.primary_image.url }}" alt="{{ product.title }}">
+          {% else %}
+            <img src="{% static 'shop/placeholder-800x533.png' %}" alt="{{ product.title }}">
+          {% endif %}
+        </figure>
+        {% if product.images.all %}
+        <div class="columns is-mobile is-multiline mt-3">
+          {% for img in product.images.all|slice:":6" %}
+          <div class="column is-one-quarter">
+            <figure class="image is-1by1">
+              <img src="{{ img.image.url }}" alt="{{ product.title }}">
+            </figure>
+          </div>
+          {% endfor %}
+        </div>
+        {% endif %}
+      </div>
+
+      <!-- Info + Buy box -->
+      <div class="column is-7">
+        <h1 class="title is-4">{{ product.title }}</h1>
+        {% if product.brand %}
+          <p class="mb-2"><strong>برند:</strong> {{ product.brand.name }}</p>
+        {% endif %}
+        <p class="mb-4"><strong>قیمت پایه:</strong> {{ product.price }}</p>
+
+        {% if product.short_description %}
+          <div class="content mb-5">{{ product.short_description|linebreaks }}</div>
+        {% endif %}
+
+        <div class="box">
+          <form action="{% url 'orders:add_to_cart' product.id %}" method="post">
+            {% csrf_token %}
+
+            {# Variants #}
+            {% if product.variants.count %}
+              <div class="field">
+                <label class="label" for="variant_id">انتخاب تنوع</label>
+                <div class="control">
+                  <div class="select is-fullwidth">
+                    <select name="variant_id" id="variant_id" required>
+                      {% for v in product.variants.all %}
+                        <option value="{{ v.id }}" {% if v.stock == 0 %}disabled{% endif %}>
+                          {{ v.attribute }}: {{ v.value }}
+                          {% if v.extra_price and v.extra_price|floatformat != '0' %} (+{{ v.extra_price }}){% endif %}
+                          {% if v.stock == 0 %} — ناموجود{% endif %}
+                        </option>
+                      {% endfor %}
+                    </select>
+                  </div>
+                </div>
+                <p class="help">لطفاً تنوع مورد نظر را انتخاب کنید.</p>
+              </div>
+            {% endif %}
+
+            <div class="field is-grouped is-align-items-center">
+              <div class="control">
+                <label class="label is-sr-only" for="qty">تعداد</label>
+                <input class="input" id="qty" type="number" name="qty" min="1" value="1" style="width:110px;">
+              </div>
+              <div class="control">
+                {# Disable add button if product inactive OR all variants out of stock #}
+                {% with has_variants=product.variants.count %}
+                  {% if not product.is_active %}
+                    <button class="button is-primary" type="submit" disabled>ناموجود</button>
+                  {% elif has_variants %}
+                    {% if product.variants.all|dictsort:"stock"|last.1.stock == 0 and product.variants.all|length == product.variants.all|length %}
+                      {# fallback if all 0 (template trick isn't perfect) #}
+                      <button class="button is-primary" type="submit" disabled>ناموجود</button>
+                    {% else %}
+                      <button class="button is-primary" type="submit">افزودن به سبد</button>
+                    {% endif %}
+                  {% else %}
+                    <button class="button is-primary" type="submit">افزودن به سبد</button>
+                  {% endif %}
+                {% endwith %}
+              </div>
+            </div>
+          </form>
+        </div>
+
+        {% if product.description %}
+          <h2 class="title is-5 mt-6">توضیحات</h2>
+          <div class="content">{{ product.description|linebreaks }}</div>
+        {% endif %}
+      </div>
+    </div>
+
+  </div>
+</section>
+{% endblock %}
 
 {% block extra_js %}
 <script type="application/ld+json">

@@ -1,5 +1,6 @@
 from django.contrib import admin
-from .models import Customer, Address
+
+from .models import Address, Customer
 
 
 @admin.register(Customer)

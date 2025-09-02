@@ -1,0 +1,49 @@
+{% extends "base.html" %}
+{% block title %}پروفایل{% endblock %}
+
+{% block content %}
+<section class="section pt-5">
+  <div class="container" style="max-width: 600px;">
+
+    <h1 class="title is-4 mb-5">ویرایش پروفایل</h1>
+
+    {% if form.errors %}
+      <article class="message is-danger">
+        <div class="message-body">
+          لطفاً خطاهای زیر را بررسی کنید و دوباره تلاش کنید.
+        </div>
+      </article>
+    {% endif %}
+
+    <form method="post">
+      {% csrf_token %}
+
+      {% for field in form %}
+        <div class="field">
+          <label class="label" for="{{ field.id_for_label }}">{{ field.label }}</label>
+          <div class="control">
+            {% if field.field.widget.input_type == "checkbox" %}
+              <label class="checkbox">{{ field }} {{ field.help_text }}</label>
+            {% else %}
+              {{ field }}
+            {% endif %}
+          </div>
+          {% if field.help_text %}
+            <p class="help">{{ field.help_text }}</p>
+          {% endif %}
+          {% if field.errors %}
+            <p class="help is-danger">{{ field.errors|striptags }}</p>
+          {% endif %}
+        </div>
+      {% endfor %}
+
+      <div class="field mt-5">
+        <div class="control">
+          <button type="submit" class="button is-primary is-fullwidth">ذخیره تغییرات</button>
+        </div>
+      </div>
+    </form>
+
+  </div>
+</section>
+{% endblock %}

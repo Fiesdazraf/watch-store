@@ -5,8 +5,8 @@ from django.dispatch import receiver
 
 @receiver(user_logged_in)
 def merge_session_cart_to_user(sender, request, user, **kwargs):
-    from apps.orders.models import Cart, CartItem
     from apps.catalog.models import ProductVariant
+    from apps.orders.models import Cart, CartItem
 
     session_cart = request.session.get("cart", [])
     if not session_cart:

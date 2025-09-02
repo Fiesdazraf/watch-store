@@ -1,6 +1,7 @@
 from django.contrib import admin
 from django.utils.html import format_html
-from .models import Category, Brand, Collection, Product, ProductVariant, ProductImage
+
+from .models import Brand, Category, Collection, Product, ProductImage, ProductVariant
 
 
 # -----------------------------

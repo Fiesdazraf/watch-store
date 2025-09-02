@@ -1,0 +1,62 @@
+{% extends "base.html" %}
+{% block title %}آدرس‌ها{% endblock %}
+
+{% block content %}
+<section class="section pt-5">
+  <div class="container">
+
+    <div class="is-flex is-justify-content-space-between is-align-items-center mb-4">
+      <h1 class="title is-4">آدرس‌های من</h1>
+      <a href="{% url 'accounts:address_create' %}" class="button is-primary">افزودن آدرس جدید</a>
+    </div>
+
+    {% if addresses %}
+      <div class="columns is-multiline">
+        {% for addr in addresses %}
+        <div class="column is-12-tablet is-6-desktop">
+          <div class="card">
+            <div class="card-content">
+              <div class="is-flex is-justify-content-space-between is-align-items-center mb-2">
+                <p class="is-size-6 has-text-weight-semibold">
+                  {{ addr.full_name|default:addr.name|default:"آدرس" }}
+                </p>
+                {% if addr.is_default %}
+                  <span class="tag is-success is-light">پیش‌فرض</span>
+                {% endif %}
+              </div>
+
+              <div class="content is-size-6">
+                <div>{{ addr.line1 }}</div>
+                {% if addr.line2 %}<div>{{ addr.line2 }}</div>{% endif %}
+                <div>
+                  {{ addr.city }}{% if addr.city and (addr.state or addr.province) %}, {% endif %}
+                  {{ addr.state|default:addr.province }}
+                </div>
+                <div>
+                  {% if addr.postal_code %}کدپستی: {{ addr.postal_code }}{% endif %}
+                  {% if addr.country %}{% if addr.postal_code %} — {% endif %}{{ addr.country }}{% endif %}
+                </div>
+                {% if addr.phone %}<div>تلفن: {{ addr.phone }}</div>{% endif %}
+              </div>
+
+              <div class="buttons mt-3">
+                <a href="{% url 'accounts:address_update' addr.id %}" class="button is-link is-light">ویرایش</a>
+                <a href="{% url 'accounts:address_delete' addr.id %}" class="button is-danger is-light">حذف</a>
+              </div>
+            </div>
+          </div>
+        </div>
+        {% endfor %}
+      </div>
+    {% else %}
+      <article class="message is-info">
+        <div class="message-body">
+          هنوز آدرسی ثبت نکرده‌اید.
+          <a href="{% url 'accounts:address_create' %}" class="button is-small is-link ml-2">افزودن آدرس</a>
+        </div>
+      </article>
+    {% endif %}
+
+  </div>
+</section>
+{% endblock %}

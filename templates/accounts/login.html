@@ -1,15 +1,50 @@
 {% extends "base.html" %}
-{% block title %}Login{% endblock %}
+{% block title %}ورود{% endblock %}
+
 {% block content %}
-<section class="container mx-auto max-w-md py-10">
-  <h1 class="text-2xl font-bold mb-6 text-center">Login</h1>
-  <form method="post" class="space-y-4">
-    {% csrf_token %}
-    {{ form.as_p }}
-    <button class="btn btn-primary w-full">Login</button>
-  </form>
-  <div class="mt-4 text-center">
-    <a href="{% url 'accounts:password_reset' %}" class="text-sm underline">Forgot password?</a>
+<section class="section pt-5">
+  <div class="container" style="max-width: 420px;">
+
+    <h1 class="title is-4 has-text-centered mb-5">ورود</h1>
+
+    {% if form.errors %}
+      <article class="message is-danger">
+        <div class="message-body">
+          لطفاً خطاهای زیر را بررسی کنید و دوباره تلاش کنید.
+        </div>
+      </article>
+    {% endif %}
+
+    <form method="post">
+      {% csrf_token %}
+
+      {% for field in form %}
+        <div class="field">
+          <label class="label" for="{{ field.id_for_label }}">{{ field.label }}</label>
+          <div class="control">
+            {% if field.field.widget.input_type == "checkbox" %}
+              <label class="checkbox">{{ field }} {{ field.help_text }}</label>
+            {% else %}
+              {{ field }}
+            {% endif %}
+          </div>
+          {% if field.errors %}
+            <p class="help is-danger">{{ field.errors|striptags }}</p>
+          {% endif %}
+        </div>
+      {% endfor %}
+
+      <div class="field mt-5">
+        <div class="control">
+          <button type="submit" class="button is-primary is-fullwidth">ورود</button>
+        </div>
+      </div>
+    </form>
+
+    <div class="has-text-centered mt-4">
+      <a href="{% url 'accounts:password_reset' %}" class="is-size-7">فراموشی رمز عبور؟</a>
+    </div>
+
   </div>
 </section>
 {% endblock %}

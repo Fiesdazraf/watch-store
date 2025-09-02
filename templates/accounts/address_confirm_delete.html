@@ -1,0 +1,34 @@
+{% extends "base.html" %}
+{% block title %}حذف آدرس{% endblock %}
+
+{% block content %}
+<section class="section pt-5">
+  <div class="container">
+
+    <h1 class="title is-4">حذف آدرس</h1>
+
+    <article class="message is-warning">
+      <div class="message-body">
+        آیا از حذف این آدرس مطمئن هستید؟
+        {% if object %}
+          <div class="mt-2 has-text-grey">
+            {{ object.full_name|default:object.name }} —
+            {{ object.line1 }}{% if object.line2 %}, {{ object.line2 }}{% endif %},
+            {{ object.city }} {{ object.state|default:object.province }}
+            {% if object.postal_code %}، {{ object.postal_code }}{% endif %}
+          </div>
+        {% endif %}
+      </div>
+    </article>
+
+    <form method="post">
+      {% csrf_token %}
+      <div class="buttons">
+        <button class="button is-danger" type="submit">حذف</button>
+        <a href="{% url 'accounts:address_list' %}" class="button is-light">انصراف</a>
+      </div>
+    </form>
+
+  </div>
+</section>
+{% endblock %}

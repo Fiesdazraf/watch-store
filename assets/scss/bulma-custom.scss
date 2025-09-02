@@ -1,0 +1,33 @@
+@use "bulma/sass/utilities" with (
+  $primary: #0f172a,  // Deep Navy
+  $link: #b08d57,     // Warm Gold
+  $text: #111827,
+  $family-sans-serif: ("Inter", "IRANSans", system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial, "Noto Sans"),
+  $radius: 12px,
+  $radius-large: 16px
+);
+
+@use "bulma/sass/base";
+@use "bulma/sass/elements";
+@use "bulma/sass/components";
+@use "bulma/sass/grid";
+@use "bulma/sass/helpers";
+@use "bulma/sass/layout";
+
+/* background override */
+body {
+  background-color: #f8fafc;
+}
+
+/* luxury helpers */
+.lux-card {
+  border-radius: 16px;
+  box-shadow: 0 10px 30px rgba(15, 23, 42, 0.08);
+  transition: transform .25s ease, box-shadow .25s ease;
+  background: #fff;
+}
+.lux-card:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 16px 40px rgba(15, 23, 42, 0.12);
+}
+.lux-accent { color: #b08d57; }

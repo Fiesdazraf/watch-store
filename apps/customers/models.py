@@ -3,7 +3,6 @@ from django.core.validators import RegexValidator
 from django.db import models
 from django.db.models import Q, UniqueConstraint
 
-
 phone_validator = RegexValidator(
     regex=r"^\+?[0-9\s\-()]{6,20}$", message="Enter a valid phone number."
 )

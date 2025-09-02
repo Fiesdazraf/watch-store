@@ -1,0 +1,48 @@
+{% extends "base.html" %}
+{% block title %}سوابق سفارش{% endblock %}
+
+{% block content %}
+<section class="section pt-5">
+  <div class="container">
+
+    <h1 class="title is-4">سفارش‌های شما</h1>
+
+    {% if orders %}
+      <div class="table-container">
+        <table class="table is-fullwidth is-striped is-narrow">
+          <thead>
+            <tr>
+              <th>شماره</th>
+              <th class="has-text-centered">تاریخ</th>
+              <th class="has-text-centered">وضعیت</th>
+              <th class="has-text-centered">مبلغ نهایی</th>
+              <th></th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for o in orders %}
+            <tr>
+              <td>{{ o.number }}</td>
+              <td class="has-text-centered">{{ o.placed_at|date:"Y-m-d H:i" }}</td>
+              <td class="has-text-centered">{{ o.get_status_display }}</td>
+              <td class="has-text-centered">{{ o.grand_total }}</td>
+              <td class="has-text-right">
+                <a href="{% url 'orders:order_detail' o.number %}" class="button is-small is-link is-light">نمایش</a>
+              </td>
+            </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    {% else %}
+      <article class="message is-info">
+        <div class="message-body">
+          هنوز سفارشی ثبت نکرده‌اید.
+          <a href="{% url 'catalog:product_list' %}" class="button is-small is-link ml-2">رفتن به فروشگاه</a>
+        </div>
+      </article>
+    {% endif %}
+
+  </div>
+</section>
+{% endblock %}

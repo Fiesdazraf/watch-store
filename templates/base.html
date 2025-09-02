@@ -8,52 +8,88 @@
   <title>{% block title %}فروشگاه ساعت{% endblock %}</title>
   <meta name="description" content="{% block meta_description %}خرید آنلاین انواع ساعت مچی مردانه، زنانه و اسپرت{% endblock %}">
 
-  <!-- CSS -->
-  <link rel="stylesheet" href="{% static 'shop/base.css' %}">
+  <!-- Bulma CSS (compiled from assets/scss/bulma-custom.scss) -->
+  <link rel="stylesheet" href="{% static 'shop/bulma.css' %}">
   {% block extra_css %}{% endblock %}
 </head>
-<body class="min-h-screen flex flex-col bg-gray-50 text-gray-900">
+<body>
 
-  <!-- Header -->
-  <header class="bg-white shadow-md">
-    <div class="container mx-auto px-4 py-3 flex justify-between items-center">
-      <a href="/" class="text-lg font-bold">🕒 Watch Store</a>
-      <nav class="space-x-4 space-x-reverse">
-        <a href="/" class="hover:text-blue-600">خانه</a>
-        <a href="{% url 'catalog:product_list' %}" class="hover:text-blue-600">فروشگاه</a>
-        <a href="{% url 'orders:cart_detail' %}" class="hover:text-blue-600">سبد خرید</a>
-        <a href="/admin/" class="hover:text-blue-600">مدیریت</a>
-      </nav>
+  <!-- Header / Navbar -->
+  <nav class="navbar is-white has-shadow" role="navigation" aria-label="main navigation">
+    <div class="container">
+      <div class="navbar-brand">
+        <a class="navbar-item has-text-weight-bold" href="/">🕒 Watch Store</a>
+
+        <a role="button" class="navbar-burger" aria-label="menu" aria-expanded="false" data-target="main-navbar">
+          <span aria-hidden="true"></span>
+          <span aria-hidden="true"></span>
+          <span aria-hidden="true"></span>
+        </a>
+      </div>
+
+      <div id="main-navbar" class="navbar-menu">
+        <div class="navbar-end">
+          <a href="/" class="navbar-item">خانه</a>
+          <a href="{% url 'catalog:product_list' %}" class="navbar-item">فروشگاه</a>
+          <a href="{% url 'orders:cart_detail' %}" class="navbar-item">سبد خرید</a>
+          <a href="/admin/" class="navbar-item">مدیریت</a>
+        </div>
+      </div>
     </div>
-  </header>
+  </nav>
+
+  <!-- Flash Messages -->
+  {% if messages %}
+  <section class="section pt-4 pb-0">
+    <div class="container">
+      {% for message in messages %}
+        <article class="message
+          {% if message.tags == 'success' %} is-success
+          {% elif message.tags == 'error' %} is-danger
+          {% elif message.tags == 'warning' %} is-warning
+          {% else %} is-info{% endif %}">
+          <div class="message-body">
+            {{ message }}
+          </div>
+        </article>
+      {% endfor %}
+    </div>
+  </section>
+  {% endif %}
 
   <!-- Main Content -->
-  <main class="flex-grow container mx-auto px-4 py-6">
-    {% block content %}{% endblock %}
-  </main>
-
-  {% if messages %}
-<div class="container mx-auto px-4 py-3">
-  <ul class="space-y-2">
-    {% for message in messages %}
-      <li class="rounded-md px-3 py-2 {% if message.tags == 'success' %}bg-green-100{% elif message.tags == 'error' %}bg-red-100{% else %}bg-blue-100{% endif %}">
-        {{ message }}
-      </li>
-    {% endfor %}
-  </ul>
-</div>
-{% endif %}
-
+  <section class="section">
+    <div class="container">
+      {% block content %}{% endblock %}
+    </div>
+  </section>
 
   <!-- Footer -->
-  <footer class="bg-gray-900 text-gray-200">
-    <div class="container mx-auto px-4 py-4 flex justify-between items-center text-sm">
-      <span>© {{ now|date:"Y" }} Watch Store</span>
-      <span>ساخته شده با Django ♥</span>
+  <footer class="footer">
+    <div class="content has-text-centered">
+      <p class="is-size-7">
+        © {% now "Y" %} Watch Store — ساخته شده با Django ♥
+      </p>
     </div>
   </footer>
 
-  <!-- Scripts -->
+  <!-- Navbar burger toggle (Bulma has no JS) -->
+  <script>
+    document.addEventListener('DOMContentLoaded', function () {
+      var burgers = Array.prototype.slice.call(document.querySelectorAll('.navbar-burger'), 0);
+      if (burgers.length > 0) {
+        burgers.forEach(function (el) {
+          el.addEventListener('click', function () {
+            var target = el.dataset.target;
+            var $target = document.getElementById(target);
+            el.classList.toggle('is-active');
+            if ($target) { $target.classList.toggle('is-active'); }
+          });
+        });
+      }
+    });
+  </script>
+
   {% block extra_js %}{% endblock %}
 </body>
 </html>

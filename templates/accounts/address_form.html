@@ -1,0 +1,58 @@
+{% extends "base.html" %}
+{% load widget_tweaks %}
+{% block title %}{% if form.instance.pk %}ویرایش آدرس{% else %}افزودن آدرس{% endif %}{% endblock %}
+
+{% block content %}
+<section class="section pt-5">
+  <div class="container">
+
+    <h1 class="title is-4">{% if form.instance.pk %}ویرایش آدرس{% else %}افزودن آدرس{% endif %}</h1>
+
+    {% if form.non_field_errors %}
+      <article class="message is-danger">
+        <div class="message-body">
+          {{ form.non_field_errors }}
+        </div>
+      </article>
+    {% endif %}
+
+    <form method="post" novalidate>
+      {% csrf_token %}
+
+      {% for field in form %}
+        <div class="field">
+          <label class="label" for="{{ field.id_for_label }}">{{ field.label }}</label>
+          <div class="control">
+            {# add Bulma input/select/textarea classes dynamically #}
+            {% if field.field.widget.input_type == "checkbox" %}
+              <label class="checkbox">
+                {{ field }} {{ field.help_text }}
+              </label>
+            {% else %}
+              {% if field.field.widget.__class__.__name__ == "Select" or field.field.widget.__class__.__name__ == "SelectMultiple" %}
+                <div class="select is-fullwidth">
+                  {{ field }}
+                </div>
+              {% else %}
+                {{ field|add_class:"input" }}
+              {% endif %}
+              {% if field.help_text %}
+                <p class="help">{{ field.help_text }}</p>
+              {% endif %}
+            {% endif %}
+          </div>
+          {% if field.errors %}
+            <p class="help is-danger">{{ field.errors|striptags }}</p>
+          {% endif %}
+        </div>
+      {% endfor %}
+
+      <div class="buttons mt-4">
+        <button class="button is-primary" type="submit">ذخیره</button>
+        <a href="{% url 'accounts:address_list' %}" class="button is-light">انصراف</a>
+      </div>
+    </form>
+
+  </div>
+</section>
+{% endblock %}

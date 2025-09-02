@@ -1,7 +1,9 @@
 from decimal import Decimal
-from django.views.generic import ListView, DetailView
+
 from django.db.models import Q
-from .models import Product, Brand, Category
+from django.views.generic import DetailView, ListView
+
+from .models import Brand, Category, Product
 
 
 class ProductListView(ListView):

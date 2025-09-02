@@ -1,0 +1,34 @@
+{
+  "name": "watch-store",
+  "version": "1.0.0",
+  "description": "A clean, modular watch e-commerce demo for portfolio showcase (SafeCode).",
+  "type": "commonjs",
+  "scripts": {
+    "dev:css": "sass --load-path=node_modules assets/scss/bulma-custom.scss static/shop/bulma.css --embed-source-map --quiet-deps",
+    "build:css": "sass --load-path=node_modules assets/scss/bulma-custom.scss static/shop/bulma.css --style=compressed --no-source-map --quiet-deps",
+    "watch:css": "sass --load-path=node_modules --watch assets/scss/bulma-custom.scss static/shop/bulma.css --quiet-deps",
+    "build": "npm run build:css",
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "postinstall": "npm run build:css"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/Fiesdazraf/watch-store.git"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/Fiesdazraf/watch-store/issues"
+  },
+  "homepage": "https://github.com/Fiesdazraf/watch-store#readme",
+  "dependencies": {
+    "bulma": "1.0.4"
+  },
+  "devDependencies": {
+    "sass": "1.91.0"
+  },
+  "engines": {
+    "node": ">=18"
+  }
+}

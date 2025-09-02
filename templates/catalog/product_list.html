@@ -1,59 +1,175 @@
 {% extends "base.html" %}
-{% block title %}فروشگاه{% endblock %}
-{% block content %}
 {% load static %}
-<h1>Shop</h1>
+{% block title %}فروشگاه{% endblock %}
 
-<form method="get">
-  <input type="text" name="q" placeholder="Search..." value="{{ request.GET.q }}">
-  <select name="brand">
-    <option value="">All brands</option>
-    {% for b in brands %}<option value="{{ b.slug }}" {% if request.GET.brand == b.slug %}selected{% endif %}>{{ b.name }}</option>{% endfor %}
-  </select>
-  <select name="category">
-    <option value="">All categories</option>
-    {% for c in categories %}<option value="{{ c.slug }}" {% if request.GET.category == c.slug %}selected{% endif %}>{{ c.name }}</option>{% endfor %}
-  </select>
-  <input type="number" name="price_min" step="0.01" placeholder="Min" value="{{ request.GET.price_min }}">
-  <input type="number" name="price_max" step="0.01" placeholder="Max" value="{{ request.GET.price_max }}">
-  <select name="order">
-    <option value="">Newest</option>
-    <option value="price_asc" {% if request.GET.order == "price_asc" %}selected{% endif %}>Price ↑</option>
-    <option value="price_desc" {% if request.GET.order == "price_desc" %}selected{% endif %}>Price ↓</option>
-  </select>
-  <button type="submit">Filter</button>
-</form>
+{% block content %}
+<section class="section pt-5">
+  <div class="container">
 
-<ul>
-  {% for p in products %}
-    <li>
-      <a href="{% url 'catalog:product_detail' p.slug %}">{{ p.title }}</a>
-      — {{ p.brand.name }} — {{ p.price }}
-      <form action="{% url 'orders:add_to_cart' p.id %}" method="post" style="display:inline">
-        {% csrf_token %}
-        <input type="hidden" name="qty" value="1">
-        <button type="submit">Add to cart</button>
-      </form>
-    </li>
-  {% empty %}
-    <li>No products</li>
-  {% endfor %}
-</ul>
+    <h1 class="title is-4">فروشگاه</h1>
 
-<div>
-{% with query_params=request.GET.urlencode %}
-  {% if is_paginated %}
-    <div>
-      {% if page_obj.has_previous %}
-        <a href="?page={{ page_obj.previous_page_number }}&{{ query_params|urlencode }}">&laquo; Prev</a>
-      {% endif %}
-      Page {{ page_obj.number }} of {{ page_obj.paginator.num_pages }}
-      {% if page_obj.has_next %}
-        <a href="?page={{ page_obj.next_page_number }}&{{ query_params|urlencode }}">Next &raquo;</a>
-      {% endif %}
-    </div>
-  {% endif %}
-{% endwith %}
-</div>
+    <!-- Filter form -->
+    <form method="get" class="box mb-5">
+      <div class="columns is-multiline">
+        <div class="column is-12-tablet is-4-desktop">
+          <div class="field">
+            <label class="label">جستجو</label>
+            <div class="control has-icons-left">
+              <input class="input" type="text" name="q" placeholder="نام محصول..." value="{{ request.GET.q }}">
+              <span class="icon is-left"><i class="fas fa-search" aria-hidden="true"></i></span>
+            </div>
+          </div>
+        </div>
 
+        <div class="column is-6-tablet is-4-desktop">
+          <div class="field">
+            <label class="label">برند</label>
+            <div class="control">
+              <div class="select is-fullwidth">
+                <select name="brand">
+                  <option value="">همه برندها</option>
+                  {% for b in brands %}
+                    <option value="{{ b.slug }}" {% if request.GET.brand == b.slug %}selected{% endif %}>{{ b.name }}</option>
+                  {% endfor %}
+                </select>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div class="column is-6-tablet is-4-desktop">
+          <div class="field">
+            <label class="label">دسته‌بندی</label>
+            <div class="control">
+              <div class="select is-fullwidth">
+                <select name="category">
+                  <option value="">همه دسته‌ها</option>
+                  {% for c in categories %}
+                    <option value="{{ c.slug }}" {% if request.GET.category == c.slug %}selected{% endif %}>{{ c.name }}</option>
+                  {% endfor %}
+                </select>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div class="column is-6-tablet is-3-desktop">
+          <div class="field">
+            <label class="label">حداقل قیمت</label>
+            <div class="control">
+              <input class="input" type="number" name="price_min" step="0.01" placeholder="Min" value="{{ request.GET.price_min }}">
+            </div>
+          </div>
+        </div>
+
+        <div class="column is-6-tablet is-3-desktop">
+          <div class="field">
+            <label class="label">حداکثر قیمت</label>
+            <div class="control">
+              <input class="input" type="number" name="price_max" step="0.01" placeholder="Max" value="{{ request.GET.price_max }}">
+            </div>
+          </div>
+        </div>
+
+        <div class="column is-6-tablet is-3-desktop">
+          <div class="field">
+            <label class="label">مرتب‌سازی</label>
+            <div class="control">
+              <div class="select is-fullwidth">
+                <select name="order">
+                  <option value="">جدیدترین</option>
+                  <option value="price_asc" {% if request.GET.order == "price_asc" %}selected{% endif %}>قیمت ↑</option>
+                  <option value="price_desc" {% if request.GET.order == "price_desc" %}selected{% endif %}>قیمت ↓</option>
+                </select>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div class="column is-6-tablet is-3-desktop is-flex is-align-items-flex-end">
+          <div class="buttons">
+            <button class="button is-primary" type="submit">اعمال فیلتر</button>
+            <a class="button is-light" href="{% url 'catalog:product_list' %}">حذف فیلتر</a>
+          </div>
+        </div>
+      </div>
+    </form>
+
+    <!-- Products grid -->
+    {% if products %}
+      <div class="columns is-multiline">
+        {% for p in products %}
+        <div class="column is-6-tablet is-4-desktop is-3-widescreen">
+          <div class="card">
+            <div class="card-image">
+              <a href="{% url 'catalog:product_detail' p.slug %}">
+                <figure class="image is-4by3">
+                  {% if p.primary_image %}
+                    <img src="{{ p.primary_image.url }}" alt="{{ p.title }}">
+                  {% else %}
+                    <img src="{% static 'shop/placeholder-600x450.png' %}" alt="{{ p.title }}">
+                  {% endif %}
+                </figure>
+              </a>
+            </div>
+            <div class="card-content">
+              <p class="is-size-6 has-text-weight-semibold mb-1">
+                <a href="{% url 'catalog:product_detail' p.slug %}">{{ p.title }}</a>
+              </p>
+              {% if p.brand %}
+                <p class="is-size-7 has-text-grey mb-2">{{ p.brand.name }}</p>
+              {% endif %}
+              <p class="mb-3"><strong>{{ p.price }}</strong></p>
+
+              <div class="buttons">
+                {% if p.variants.count %}
+                  <a href="{% url 'catalog:product_detail' p.slug %}" class="button is-link is-light">مشاهده</a>
+                {% else %}
+                  <form action="{% url 'orders:add_to_cart' p.id %}" method="post">
+                    {% csrf_token %}
+                    <input type="hidden" name="qty" value="1">
+                    <button class="button is-primary" type="submit" {% if not p.is_active %}disabled{% endif %}>
+                      افزودن به سبد
+                    </button>
+                  </form>
+                {% endif %}
+              </div>
+            </div>
+          </div>
+        </div>
+        {% endfor %}
+      </div>
+    {% else %}
+      <article class="message is-info">
+        <div class="message-body">
+          محصولی یافت نشد.
+        </div>
+      </article>
+    {% endif %}
+
+    <!-- Pagination -->
+    {% if is_paginated %}
+      {% with query_params=request.GET.urlencode %}
+      <nav class="pagination is-centered mt-5" role="navigation" aria-label="pagination">
+        {% if page_obj.has_previous %}
+          <a class="pagination-previous" href="?page={{ page_obj.previous_page_number }}&{{ query_params|urlencode }}">قبلی</a>
+        {% else %}
+          <a class="pagination-previous" disabled>قبلی</a>
+        {% endif %}
+
+        {% if page_obj.has_next %}
+          <a class="pagination-next" href="?page={{ page_obj.next_page_number }}&{{ query_params|urlencode }}">بعدی</a>
+        {% else %}
+          <a class="pagination-next" disabled>بعدی</a>
+        {% endif %}
+
+        <ul class="pagination-list">
+          <li><span class="pagination-ellipsis">صفحه {{ page_obj.number }} از {{ page_obj.paginator.num_pages }}</span></li>
+        </ul>
+      </nav>
+      {% endwith %}
+    {% endif %}
+
+  </div>
+</section>
 {% endblock %}

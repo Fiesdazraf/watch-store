@@ -1,28 +1,110 @@
-<h1>Your Cart</h1>
-<table>
-  <tr><th>Product</th><th>Unit</th><th>Qty</th><th>Total</th><th></th></tr>
-  {% for it in items %}
-  <tr>
-    <td>{{ it.product.title }}</td>
-    <td>{{ it.unit_price }}</td>
-    <td>
-      <form action="{% url 'orders:update_cart_item' it.id %}" method="post">
-        {% csrf_token %}
-        <input type="number" name="qty" min="0" value="{{ it.quantity }}">
-        <button type="submit">Update</button>
-      </form>
-    </td>
-    <td>{{ it.subtotal }}</td>
-    <td>
-      <form action="{% url 'orders:remove_cart_item' it.id %}" method="post">
-        {% csrf_token %}
-        <button type="submit">Remove</button>
-      </form>
-    </td>
-  </tr>
-  {% empty %}
-  <tr><td colspan="5">Cart is empty.</td></tr>
-  {% endfor %}
-</table>
+{% extends "base.html" %}
+{% block title %}سبد خرید{% endblock %}
 
-<h3>Subtotal: {{ cart.get_subtotal }}</h3>
+{% block content %}
+<section class="section pt-5">
+  <div class="container">
+
+    <h1 class="title is-4">سبد خرید</h1>
+
+    {% if items %}
+      <div class="table-container">
+        <table class="table is-fullwidth is-striped is-narrow">
+          <thead>
+            <tr>
+              <th>محصول</th>
+              <th class="has-text-centered">قیمت واحد</th>
+              <th class="has-text-centered" style="width:160px;">تعداد</th>
+              <th class="has-text-centered">جمع جزء</th>
+              <th></th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for it in items %}
+            <tr>
+              <td>
+                <div class="is-flex is-align-items-center">
+                  {% if it.product.primary_image %}
+                    <figure class="image is-48x48 ml-3">
+                      <img src="{{ it.product.primary_image.url }}" alt="{{ it.product.title }}">
+                    </figure>
+                  {% endif %}
+                  <div>
+                    <strong>{{ it.product.title }}</strong>
+                    {% if it.variant_display %}
+                      <div class="is-size-7 has-text-grey">({{ it.variant_display }})</div>
+                    {% endif %}
+                  </div>
+                </div>
+              </td>
+              <td class="has-text-centered">{{ it.unit_price }}</td>
+              <td class="has-text-centered">
+                <form action="{% url 'orders:update_cart_item' it.id %}" method="post" class="is-inline-block">
+                  {% csrf_token %}
+                  <div class="field has-addons is-justify-content-center">
+                    <div class="control">
+                      <input class="input is-small has-text-centered" type="number" name="qty" min="0" step="1" value="{{ it.quantity }}" style="width:90px;">
+                    </div>
+                    <div class="control">
+                      <button class="button is-small is-info" type="submit">به‌روزرسانی</button>
+                    </div>
+                  </div>
+                </form>
+              </td>
+              <td class="has-text-centered">{{ it.subtotal }}</td>
+              <td class="has-text-right">
+                <form action="{% url 'orders:remove_cart_item' it.id %}" method="post">
+                  {% csrf_token %}
+                  <button class="button is-small is-danger is-light" type="submit">حذف</button>
+                </form>
+              </td>
+            </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+
+      <div class="columns is-vcentered">
+        <div class="column">
+          <a href="{% url 'catalog:product_list' %}" class="button is-light">ادامه خرید</a>
+        </div>
+        <div class="column is-narrow">
+          <div class="box py-3 px-4">
+            <div class="is-flex is-justify-content-space-between mb-2">
+              <span>جمع جزء:</span>
+              <strong>{{ cart.get_subtotal }}</strong>
+            </div>
+            {% if cart.shipping_cost %}
+            <div class="is-flex is-justify-content-space-between mb-2">
+              <span>هزینه ارسال:</span>
+              <strong>{{ cart.shipping_cost }}</strong>
+            </div>
+            {% endif %}
+            {% if cart.discount_total %}
+            <div class="is-flex is-justify-content-space-between mb-2">
+              <span>تخفیف:</span>
+              <strong>-{{ cart.discount_total }}</strong>
+            </div>
+            {% endif %}
+            <hr class="my-2">
+            <div class="is-flex is-justify-content-space-between">
+              <span>مبلغ نهایی:</span>
+              <strong class="has-text-weight-bold">{{ cart.get_total }}</strong>
+            </div>
+          </div>
+          <!-- No checkout button yet -->
+        </div>
+      </div>
+
+    {% else %}
+      <article class="message is-info">
+        <div class="message-body">
+          سبد خرید شما خالی است.
+          <a href="{% url 'catalog:product_list' %}" class="button is-small is-link ml-2">رفتن به فروشگاه</a>
+        </div>
+      </article>
+    {% endif %}
+
+  </div>
+</section>
+{% endblock %}

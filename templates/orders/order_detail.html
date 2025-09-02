@@ -1,0 +1,96 @@
+{% extends "base.html" %}
+{% block title %}سفارش {{ order.number }}{% endblock %}
+
+{% block content %}
+<section class="section pt-5">
+  <div class="container">
+
+    <h1 class="title is-4">سفارش {{ order.number }}</h1>
+
+    <!-- Meta -->
+    <div class="columns">
+      <div class="column">
+        <div class="box">
+          <div class="columns is-multiline is-variable is-1">
+            <div class="column is-half">
+              <p><strong>تاریخ:</strong> {{ order.placed_at|date:"Y-m-d H:i" }}</p>
+            </div>
+            <div class="column is-half">
+              <p><strong>وضعیت:</strong> {{ order.get_status_display }}</p>
+            </div>
+            <div class="column is-half">
+              <p><strong>روش پرداخت:</strong> {{ order.get_payment_method_display }}</p>
+            </div>
+            <div class="column is-half">
+              <p><strong>مبلغ نهایی:</strong> {{ order.grand_total }}</p>
+            </div>
+            <div class="column is-full">
+              <p><strong>آدرس ارسال:</strong> {{ order.shipping_address }}</p>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Items -->
+    <h2 class="title is-5 mb-3">آیتم‌ها</h2>
+    <div class="table-container">
+      <table class="table is-fullwidth is-striped is-narrow">
+        <thead>
+          <tr>
+            <th>محصول</th>
+            <th class="has-text-centered">SKU</th>
+            <th class="has-text-centered">قیمت واحد</th>
+            <th class="has-text-centered">تعداد</th>
+            <th class="has-text-centered">جمع جزء</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for it in order.items.all %}
+          <tr>
+            <td>{{ it.product_name }}</td>
+            <td class="has-text-centered">{{ it.sku }}</td>
+            <td class="has-text-centered">{{ it.unit_price }}</td>
+            <td class="has-text-centered">{{ it.quantity }}</td>
+            <td class="has-text-centered">{{ it.total_price }}</td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+
+    <!-- Totals -->
+    <div class="columns is-mobile">
+      <div class="column is-offset-7-desktop is-5-desktop">
+        <div class="box">
+          <div class="is-flex is-justify-content-space-between mb-2">
+            <span>جمع جزء:</span>
+            <strong>{{ order.subtotal }}</strong>
+          </div>
+          <div class="is-flex is-justify-content-space-between mb-2">
+            <span>هزینه ارسال:</span>
+            <strong>{{ order.shipping_cost }}</strong>
+          </div>
+          {% if order.discount_total %}
+          <div class="is-flex is-justify-content-space-between mb-2">
+            <span>تخفیف:</span>
+            <strong>-{{ order.discount_total }}</strong>
+          </div>
+          {% endif %}
+          <hr class="my-2">
+          <div class="is-flex is-justify-content-space-between">
+            <span>مبلغ نهایی:</span>
+            <strong class="has-text-weight-bold">{{ order.grand_total }}</strong>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="buttons">
+      <a href="{% url 'orders:order_history' %}" class="button is-light">بازگشت به سفارش‌ها</a>
+      <a href="{% url 'catalog:product_list' %}" class="button is-link is-light">ادامه خرید</a>
+    </div>
+
+  </div>
+</section>
+{% endblock %}

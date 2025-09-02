@@ -1,12 +1,12 @@
-from decimal import Decimal
-from django.shortcuts import get_object_or_404, redirect, render
-from django.views.decorators.http import require_POST
 from django.contrib import messages
 from django.contrib.auth.decorators import login_required
 from django.db import transaction
+from django.shortcuts import get_object_or_404, redirect, render
+from django.views.decorators.http import require_POST
 
-from apps.catalog.models import Product, ProductVariant
-from .models import Cart, CartItem, add_to_cart, Order
+from apps.catalog.models import Product
+
+from .models import Cart, CartItem, Order, add_to_cart
 
 
 def _parse_qty(value, default=1, minimum=1, maximum=None):

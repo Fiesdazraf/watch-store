@@ -1,13 +1,14 @@
+from django.conf import settings
 from django.contrib import messages
 from django.contrib.auth import get_user_model
 from django.contrib.auth.decorators import login_required
 from django.contrib.auth.tokens import default_token_generator
 from django.contrib.auth.views import (
     LoginView,
-    PasswordResetView,
-    PasswordResetDoneView,
-    PasswordResetConfirmView,
     PasswordResetCompleteView,
+    PasswordResetConfirmView,
+    PasswordResetDoneView,
+    PasswordResetView,
 )
 from django.contrib.sites.shortcuts import get_current_site
 from django.core.mail import send_mail
@@ -16,10 +17,9 @@ from django.shortcuts import get_object_or_404, redirect, render
 from django.template.loader import render_to_string
 from django.urls import reverse, reverse_lazy
 from django.utils.encoding import force_bytes
-from django.utils.http import urlsafe_base64_encode, urlsafe_base64_decode
-from django.conf import settings
+from django.utils.http import urlsafe_base64_decode, urlsafe_base64_encode
 
-from .forms import RegisterForm, ProfileForm, AddressForm
+from .forms import AddressForm, ProfileForm, RegisterForm
 from .models import Address
 
 User = get_user_model()
@@ -118,7 +118,8 @@ def address_delete_view(request, pk):
         addr.delete()
         messages.success(request, "Address deleted.")
         return redirect("accounts:address_list")
-    return render(request, "accounts/address_confirm_delete.html", {"address": addr})
+    # pass as `object` to match the template
+    return render(request, "accounts/address_confirm_delete.html", {"object": addr})
 
 
 def activate_account_view(request, uidb64, token):
