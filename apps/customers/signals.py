@@ -6,6 +6,7 @@ from .models import Customer
 
 User = get_user_model()
 
+
 @receiver(post_save, sender=User)
 def create_customer_for_user(sender, instance, created, **kwargs):
     if created:

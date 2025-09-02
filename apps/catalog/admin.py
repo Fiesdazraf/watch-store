@@ -1,4 +1,5 @@
 from django.contrib import admin
+from django.utils.html import format_html
 from .models import Category, Brand, Collection, Product, ProductVariant, ProductImage
 
 
@@ -47,8 +48,18 @@ class ProductVariantInline(admin.TabularInline):
 
 class ProductImageInline(admin.TabularInline):
     model = ProductImage
-    extra = 1
-    fields = ("image", "alt", "is_primary")
+    extra = 0
+    readonly_fields = ("preview",)
+    fields = ("image", "alt", "is_primary", "preview")
+
+    def preview(self, obj):
+        if obj.image:
+            return format_html(
+                '<img src="{}" style="height:60px;border-radius:6px"/>', obj.image.url
+            )
+        return "-"
+
+    preview.short_description = "Preview"
 
 
 # -----------------------------
@@ -62,10 +73,11 @@ class ProductVariantAdmin(admin.ModelAdmin):
     list_filter = ("is_active", "product__brand")
     autocomplete_fields = ("product",)  # سریع‌تر برای دیتابیس بزرگ
 
+
 @admin.register(Product)
 class ProductAdmin(admin.ModelAdmin):
     list_display = ("title", "brand", "price", "is_active")
-    search_fields = ("title", "brand__name")  
+    search_fields = ("title", "brand__name")
     list_select_related = ("brand",)
     list_filter = ("is_active", "brand")
     inlines = [ProductVariantInline, ProductImageInline]

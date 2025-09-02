@@ -6,5 +6,6 @@ class CustomersConfig(AppConfig):
     name = "apps.customers"
     verbose_name = "customers"
 
+
 def ready(self):
     import apps.customers.signals  # noqa

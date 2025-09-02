@@ -14,7 +14,7 @@ from .views import (
     MyPasswordResetCompleteView,
     activate_account_view,
     resend_activation_view,
-    register_view
+    register_view,
 )
 
 app_name = "accounts"

@@ -2,6 +2,7 @@
 from django.contrib.auth.signals import user_logged_in
 from django.dispatch import receiver
 
+
 @receiver(user_logged_in)
 def merge_session_cart_to_user(sender, request, user, **kwargs):
     from apps.orders.models import Cart, CartItem

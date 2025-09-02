@@ -43,12 +43,11 @@ def register_view(request):
         activation_link = f"{request.scheme}://{current_site.domain}{activation_url}"
 
         subject = render_to_string(
-            "accounts/emails/activation_subject.txt",
-            {"site_name": current_site.name}
+            "accounts/emails/activation_subject.txt", {"site_name": current_site.name}
         ).strip()
         message = render_to_string(
             "accounts/emails/activation_email.txt",
-            {"user": user, "activation_link": activation_link, "site_name": current_site.name}
+            {"user": user, "activation_link": activation_link, "site_name": current_site.name},
         )
         send_mail(subject, message, settings.DEFAULT_FROM_EMAIL, [user.email])
 
@@ -157,7 +156,7 @@ def resend_activation_view(request):
     ).strip()
     message = render_to_string(
         "accounts/emails/activation_email.txt",
-        {"user": request.user, "activation_link": activation_link, "site_name": current_site.name}
+        {"user": request.user, "activation_link": activation_link, "site_name": current_site.name},
     )
     send_mail(subject, message, settings.DEFAULT_FROM_EMAIL, [request.user.email])
     messages.success(request, "Verification email has been re-sent.")

@@ -1,10 +1,41 @@
 <h1>{{ product.title }}</h1>
 <p>Brand: {{ product.brand.name }}</p>
-<p>Price: {{ product.price }}</p>
+<p>Base price: {{ product.price }}</p>
 
 <form action="{% url 'orders:add_to_cart' product.id %}" method="post">
   {% csrf_token %}
+
+  {% if product.variants.all %}
+    <label for="variant_id">Variant:</label>
+    <select name="variant_id" id="variant_id" required>
+      {% for v in product.variants.all %}
+        <option value="{{ v.id }}">
+          {{ v.attribute }}: {{ v.value }}{% if v.extra_price and v.extra_price|floatformat != '0' %} (+{{ v.extra_price }}){% endif %}
+          {% if v.stock == 0 %} - Out of stock{% endif %}
+        </option>
+      {% endfor %}
+    </select>
+  {% endif %}
+
   <label>Qty:</label>
   <input type="number" name="qty" min="1" value="1">
   <button type="submit">Add to cart</button>
 </form>
+
+{% block extra_js %}
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@type": "Product",
+  "name": "{{ product.title|escapejs }}",
+  "brand": "{{ product.brand.name|escapejs }}",
+  "sku": "{{ product.sku|escapejs }}",
+  "offers": {
+    "@type": "Offer",
+    "priceCurrency": "IRR",
+    "price": "{{ product.price }}",
+    "availability": "https://schema.org/{% if product.is_active %}InStock{% else %}OutOfStock{% endif %}"
+  }
+}
+</script>
+{% endblock %}

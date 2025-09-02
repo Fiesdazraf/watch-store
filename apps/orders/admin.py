@@ -2,6 +2,7 @@ from django.contrib import admin
 from django.utils.html import format_html
 from apps.orders.models import Cart, CartItem, Order, OrderItem
 
+
 # -----------------------------
 # Inlines
 # -----------------------------
@@ -16,6 +17,7 @@ class CartItemInline(admin.TabularInline):
     def subtotal(self, obj):
         return obj.subtotal()
 
+
 class OrderItemInline(admin.TabularInline):
     model = OrderItem
     extra = 0
@@ -26,6 +28,7 @@ class OrderItemInline(admin.TabularInline):
 
     def total_price(self, obj):
         return obj.total_price
+
 
 # -----------------------------
 # Cart Admin
@@ -46,13 +49,14 @@ class CartAdmin(admin.ModelAdmin):
     def subtotal(self, obj):
         return obj.get_subtotal()
 
+
 # -----------------------------
 # Order Admin
 # -----------------------------
 @admin.register(Order)
 class OrderAdmin(admin.ModelAdmin):
     list_display = (
-        "id",            # یا اگر number داری: "number",
+        "id",  # یا اگر number داری: "number",
         "customer_email",
         "status",
         "payment_method",
@@ -64,7 +68,7 @@ class OrderAdmin(admin.ModelAdmin):
     )
     list_filter = ("status", "payment_method", "placed_at")
     search_fields = (
-        "id",            # اگر number داری: "number",
+        "id",  # اگر number داری: "number",
         "customer__user__email",
         "customer__user__full_name",
         "items__sku",

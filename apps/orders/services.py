@@ -3,6 +3,7 @@ from decimal import Decimal
 from django.db import transaction
 from .models import Order, OrderItem, CartItem
 
+
 @transaction.atomic
 def create_order_from_cart(customer, shipping_address, cart) -> Order:
     order = Order.objects.create(
