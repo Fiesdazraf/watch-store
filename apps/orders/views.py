@@ -44,7 +44,8 @@ def _get_cart(request):
             for it in guest_cart.items.all():
                 existing = user_cart.items.filter(product=it.product, variant=it.variant).first()
                 if existing:
-                    # keep unit_price snapshot policy simple: prefer latest snapshot from add_to_cart
+                    # keep unit_price snapshot policy simple
+                    # prefer latest snapshot from add_to_cart
                     existing.quantity += it.quantity
                     existing.save(update_fields=["quantity"])
                 else:
