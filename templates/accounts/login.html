@@ -1,48 +1,79 @@
 {% extends "base.html" %}
+{% load widget_tweaks %}
 {% block title %}ورود{% endblock %}
 
 {% block content %}
 <section class="section pt-5">
-  <div class="container" style="max-width: 420px;">
+  <div class="container" style="max-width: 520px;">
 
-    <h1 class="title is-4 has-text-centered mb-5">ورود</h1>
+    <div class="card">
+      <header class="card-header">
+        <p class="card-header-title is-size-5">
+          <span class="icon mr-2"><i class="fas fa-sign-in-alt"></i></span>
+          ورود
+        </p>
+      </header>
 
-    {% if form.errors %}
-      <article class="message is-danger">
-        <div class="message-body">
-          لطفاً خطاهای زیر را بررسی کنید و دوباره تلاش کنید.
+      <div class="card-content">
+
+        {% if form.non_field_errors %}
+          <article class="message is-danger">
+            <div class="message-body">
+              {{ form.non_field_errors }}
+            </div>
+          </article>
+        {% endif %}
+        {% if form.errors and not form.non_field_errors %}
+          <article class="message is-danger">
+            <div class="message-body">
+              لطفاً خطاهای زیر را بررسی کنید و دوباره تلاش کنید.
+            </div>
+          </article>
+        {% endif %}
+
+        <form method="post" novalidate>
+          {% csrf_token %}
+
+          {% for field in form %}
+            <div class="field">
+              <label class="label" for="{{ field.id_for_label }}">
+                {% if field.name == "username" %}ایمیل{% else %}{{ field.label }}{% endif %}
+              </label>
+              <div class="control has-icons-left">
+                {% if field.field.widget.input_type == "checkbox" %}
+                  <label class="checkbox">{{ field }} {{ field.help_text }}</label>
+                {% else %}
+                  {% if field.name == "username" %}
+                    {{ field|add_class:"input"|attr:"placeholder:you@example.com"|attr:"dir:ltr"|attr:"autocomplete:email"|attr:"inputmode:email" }}
+                    <span class="icon is-small is-left"><i class="fas fa-envelope"></i></span>
+                  {% elif field.name == "password" %}
+                    {{ field|add_class:"input"|attr:"placeholder:رمز عبور"|attr:"dir:ltr"|attr:"autocomplete:current-password" }}
+                    <span class="icon is-small is-left"><i class="fas fa-lock"></i></span>
+                  {% else %}
+                    {{ field|add_class:"input" }}
+                    <span class="icon is-small is-left"><i class="fas fa-user"></i></span>
+                  {% endif %}
+                {% endif %}
+              </div>
+              {% if field.errors %}<p class="help is-danger">{{ field.errors|striptags }}</p>{% endif %}
+            </div>
+          {% endfor %}
+
+          <button type="submit" class="button is-primary is-fullwidth mt-4">
+            ورود
+          </button>
+        </form>
+
+        <div class="has-text-centered mt-4">
+          <a href="{% url 'accounts:password_reset' %}" class="is-size-7">فراموشی رمز عبور؟</a>
         </div>
-      </article>
-    {% endif %}
 
-    <form method="post">
-      {% csrf_token %}
+        <p class="has-text-centered is-size-7 mt-3">
+          حساب ندارید؟
+          <a href="{% url 'accounts:register' %}">ثبت‌نام کنید</a>
+        </p>
 
-      {% for field in form %}
-        <div class="field">
-          <label class="label" for="{{ field.id_for_label }}">{{ field.label }}</label>
-          <div class="control">
-            {% if field.field.widget.input_type == "checkbox" %}
-              <label class="checkbox">{{ field }} {{ field.help_text }}</label>
-            {% else %}
-              {{ field }}
-            {% endif %}
-          </div>
-          {% if field.errors %}
-            <p class="help is-danger">{{ field.errors|striptags }}</p>
-          {% endif %}
-        </div>
-      {% endfor %}
-
-      <div class="field mt-5">
-        <div class="control">
-          <button type="submit" class="button is-primary is-fullwidth">ورود</button>
-        </div>
       </div>
-    </form>
-
-    <div class="has-text-centered mt-4">
-      <a href="{% url 'accounts:password_reset' %}" class="is-size-7">فراموشی رمز عبور؟</a>
     </div>
 
   </div>

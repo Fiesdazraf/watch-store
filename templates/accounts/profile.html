@@ -5,44 +5,65 @@
 <section class="section pt-5">
   <div class="container" style="max-width: 600px;">
 
-    <h1 class="title is-4 mb-5">ویرایش پروفایل</h1>
+    <div class="card shadow-sm">
+      <header class="card-header">
+        <p class="card-header-title is-size-5">
+          <span class="icon mr-2"><i class="fas fa-user-circle"></i></span>
+          ویرایش پروفایل
+        </p>
+      </header>
 
-    {% if form.errors %}
-      <article class="message is-danger">
-        <div class="message-body">
-          لطفاً خطاهای زیر را بررسی کنید و دوباره تلاش کنید.
-        </div>
-      </article>
-    {% endif %}
+      <div class="card-content">
+        {% if form.errors %}
+          <article class="message is-danger mb-4">
+            <div class="message-body">
+              لطفاً خطاهای زیر را بررسی کنید و دوباره تلاش کنید.
+            </div>
+          </article>
+        {% endif %}
 
-    <form method="post">
-      {% csrf_token %}
+        <form method="post" novalidate>
+          {% csrf_token %}
 
-      {% for field in form %}
-        <div class="field">
-          <label class="label" for="{{ field.id_for_label }}">{{ field.label }}</label>
-          <div class="control">
-            {% if field.field.widget.input_type == "checkbox" %}
-              <label class="checkbox">{{ field }} {{ field.help_text }}</label>
-            {% else %}
-              {{ field }}
-            {% endif %}
+          {% for field in form %}
+            <div class="field mb-4">
+              <label class="label" for="{{ field.id_for_label }}">{{ field.label }}</label>
+              <div class="control has-icons-left">
+                {% if field.field.widget.input_type == "checkbox" %}
+                  <label class="checkbox">{{ field }} {{ field.help_text }}</label>
+                {% else %}
+                  {{ field }}
+                  <span class="icon is-small is-left">
+                    {% if "email" in field.name %}
+                      <i class="fas fa-envelope"></i>
+                    {% elif "phone" in field.name %}
+                      <i class="fas fa-phone"></i>
+                    {% else %}
+                      <i class="fas fa-user"></i>
+                    {% endif %}
+                  </span>
+                {% endif %}
+              </div>
+              {% if field.help_text %}
+                <p class="help">{{ field.help_text }}</p>
+              {% endif %}
+              {% if field.errors %}
+                <p class="help is-danger">{{ field.errors|striptags }}</p>
+              {% endif %}
+            </div>
+          {% endfor %}
+
+          <div class="field mt-5">
+            <div class="control">
+              <button type="submit" class="button is-primary is-fullwidth is-medium">
+                <span class="icon"><i class="fas fa-save"></i></span>
+                <span>ذخیره تغییرات</span>
+              </button>
+            </div>
           </div>
-          {% if field.help_text %}
-            <p class="help">{{ field.help_text }}</p>
-          {% endif %}
-          {% if field.errors %}
-            <p class="help is-danger">{{ field.errors|striptags }}</p>
-          {% endif %}
-        </div>
-      {% endfor %}
-
-      <div class="field mt-5">
-        <div class="control">
-          <button type="submit" class="button is-primary is-fullwidth">ذخیره تغییرات</button>
-        </div>
+        </form>
       </div>
-    </form>
+    </div>
 
   </div>
 </section>

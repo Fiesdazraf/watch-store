@@ -1,13 +1,20 @@
+# apps/orders/models.py
+from __future__ import annotations
+
 from decimal import Decimal
 
 from django.conf import settings
 from django.db import models
 from django.db.models import Q, UniqueConstraint
 
+from apps.accounts.models import Address
 from apps.catalog.models import Product, ProductVariant
-from apps.customers.models import Address, Customer
+from apps.customers.models import Customer
 
 
+# -----------------------------
+# Cart / CartItem
+# -----------------------------
 class Cart(models.Model):
     user = models.ForeignKey(
         settings.AUTH_USER_MODEL,
@@ -32,14 +39,17 @@ class Cart(models.Model):
         ]
         ordering = ["-created_at"]
 
-    def __str__(self):
+    def __str__(self) -> str:
         return f"Cart #{self.pk}"
 
     def get_subtotal(self) -> Decimal:
-        # safe sum even if some items have null unit_price (shouldn't after this migration)
+        """
+        Sum using the DB to avoid Python-side loops / N+1 issues.
+        """
         total = Decimal("0.00")
-        for item in self.items.all():
-            total += item.subtotal()
+        # values_list avoids instantiating model objects; safe with None
+        for unit_price, qty in self.items.values_list("unit_price", "quantity"):
+            total += (unit_price or Decimal("0.00")) * qty
         return total
 
 
@@ -47,6 +57,7 @@ class CartItem(models.Model):
     cart = models.ForeignKey(Cart, related_name="items", on_delete=models.CASCADE)
     product = models.ForeignKey(Product, on_delete=models.PROTECT)
     variant = models.ForeignKey(ProductVariant, on_delete=models.PROTECT, null=True, blank=True)
+
     quantity = models.PositiveIntegerField(default=1)
     # Snapshot of unit price at the time of adding to cart (non-null to avoid admin errors)
     unit_price = models.DecimalField(max_digits=10, decimal_places=2, default=Decimal("0.00"))
@@ -68,14 +79,20 @@ class CartItem(models.Model):
             # quantity must be > 0
             models.CheckConstraint(check=Q(quantity__gt=0), name="cartitem_quantity_gt_0"),
         ]
+        indexes = [
+            models.Index(fields=["cart"]),
+        ]
 
     def subtotal(self) -> Decimal:
         return (self.unit_price or Decimal("0.00")) * self.quantity
 
-    def __str__(self):
+    def __str__(self) -> str:
         return f"{self.product} x{self.quantity}"
 
 
+# -----------------------------
+# Order / OrderItem
+# -----------------------------
 class OrderStatus(models.TextChoices):
     PENDING = "pending", "Pending"
     PAID = "paid", "Paid"
@@ -112,6 +129,7 @@ class Order(models.Model):
     updated_at = models.DateTimeField(auto_now=True)
     notes = models.TextField(blank=True)
 
+    # e.g., SW00000042
     number = models.CharField(max_length=16, unique=True, blank=True)
 
     class Meta:
@@ -119,11 +137,19 @@ class Order(models.Model):
         indexes = [
             models.Index(fields=["status"]),
             models.Index(fields=["placed_at"]),
+            models.Index(fields=["number"]),
         ]
 
     def recalc_totals(self, save: bool = True) -> Decimal:
-        self.subtotal = sum((item.total_price for item in self.items.all()), Decimal("0.00"))
-        self.grand_total = self.subtotal + self.shipping_cost - self.discount_total
+        subtotal = Decimal("0.00")
+        for unit_price, qty in self.items.values_list("unit_price", "quantity"):
+            subtotal += (unit_price or Decimal("0.00")) * qty
+        self.subtotal = subtotal
+        self.grand_total = (
+            self.subtotal
+            + (self.shipping_cost or Decimal("0.00"))
+            - (self.discount_total or Decimal("0.00"))
+        )
         if save:
             self.save(update_fields=["subtotal", "grand_total", "updated_at"])
         return self.grand_total
@@ -132,11 +158,14 @@ class Order(models.Model):
         new = self.pk is None
         super().save(*args, **kwargs)
         if new and not self.number:
-            self.number = f"SW{self.id:08d}"  # e.g., SW00000042
+            self.number = f"SW{self.id:08d}"
             super().save(update_fields=["number"])
 
-    def __str__(self):
+    def __str__(self) -> str:
         return f"Order {self.number or self.id} - {self.get_status_display()}"
+
+
+# apps/orders/models.py
 
 
 class OrderItem(models.Model):
@@ -145,10 +174,10 @@ class OrderItem(models.Model):
     variant = models.ForeignKey(ProductVariant, on_delete=models.PROTECT, null=True, blank=True)
 
     # Snapshots for denormalization (safe against later changes)
-    product_name = models.CharField(max_length=200)
-    sku = models.CharField(max_length=40, blank=True)
+    product_name = models.CharField(max_length=200, blank=True)
+    sku = models.CharField(max_length=64, blank=True)
 
-    unit_price = models.DecimalField(max_digits=10, decimal_places=2)
+    unit_price = models.DecimalField(max_digits=10, decimal_places=2, blank=True, null=True)
     quantity = models.PositiveIntegerField(default=1)
 
     class Meta:
@@ -159,14 +188,44 @@ class OrderItem(models.Model):
 
     @property
     def total_price(self) -> Decimal:
-        return self.unit_price * self.quantity
+        return (self.unit_price or Decimal("0.00")) * self.quantity
 
-    def __str__(self):
-        return f"{self.product_name} x{self.quantity}"
+    def save(self, *args, **kwargs):
+        """
+        Ensure snapshot fields are populated if admin/user forgot to set them.
+        """
+        if not self.product_name:
+            self.product_name = getattr(self.product, "name", "") or str(self.product)
+
+        if not self.sku:
+            self.sku = getattr(self.variant, "sku", "") or getattr(self.product, "sku", "") or ""
+
+        if not self.unit_price:
+            base = getattr(self.product, "price", None)
+            if base is None:
+                base = Decimal("0.00")
+            extra = (
+                getattr(self.variant, "extra_price", Decimal("0.00"))
+                if self.variant
+                else Decimal("0.00")
+            )
+            self.unit_price = base + extra
+
+        super().save(*args, **kwargs)
 
 
-# Optional: keep this here for now (better as a service in apps/orders/services.py)
-def add_to_cart(cart: Cart, product: Product, variant: ProductVariant | None = None, qty: int = 1):
+# -----------------------------
+# Services (simple helper)
+# -----------------------------
+def add_to_cart(
+    cart: Cart,
+    product: Product,
+    variant: ProductVariant | None = None,  # optional variant
+    qty: int = 1,
+) -> CartItem:
+    """
+    Add or increment a cart item, snapshotting the unit price at the time of add.
+    """
     base = product.price
     extra = getattr(variant, "extra_price", Decimal("0.00")) if variant else Decimal("0.00")
     unit_price = base + extra
@@ -179,7 +238,6 @@ def add_to_cart(cart: Cart, product: Product, variant: ProductVariant | None = N
     )
     if not created:
         item.quantity += qty
-        # keep snapshot consistent with current price
-        item.unit_price = unit_price
+        item.unit_price = unit_price  # keep snapshot consistent with current price
         item.save(update_fields=["quantity", "unit_price"])
     return item

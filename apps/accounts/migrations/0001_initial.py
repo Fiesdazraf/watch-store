@@ -105,7 +105,7 @@ class Migration(migrations.Migration):
                 ("line1", models.CharField(max_length=255)),
                 ("line2", models.CharField(blank=True, max_length=255)),
                 ("city", models.CharField(max_length=100)),
-                ("state", models.CharField(blank=True, max_length=100)),
+                ("province", models.CharField(blank=True, max_length=100)),
                 ("postal_code", models.CharField(blank=True, max_length=20)),
                 ("country", models.CharField(default="IR", max_length=2)),
                 ("is_default", models.BooleanField(default=False)),

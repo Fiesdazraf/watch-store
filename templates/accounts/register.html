@@ -1,45 +1,102 @@
 {% extends "base.html" %}
+{% load widget_tweaks %}
 {% block title %}ثبت‌نام{% endblock %}
 
 {% block content %}
 <section class="section pt-5">
-  <div class="container" style="max-width: 420px;">
+  <div class="container" style="max-width: 520px;">
 
-    <h1 class="title is-4 has-text-centered mb-5">ایجاد حساب کاربری</h1>
+    <div class="card">
+      <header class="card-header">
+        <p class="card-header-title is-size-5">
+          <span class="icon mr-2"><i class="fas fa-user-plus"></i></span>
+          ایجاد حساب کاربری
+        </p>
+      </header>
 
-    {% if form.errors %}
-      <article class="message is-danger">
-        <div class="message-body">
-          لطفاً خطاهای زیر را بررسی کنید و دوباره تلاش کنید.
-        </div>
-      </article>
-    {% endif %}
+      <div class="card-content">
 
-    <form method="post">
-      {% csrf_token %}
+        {% if form.non_field_errors %}
+          <article class="message is-danger">
+            <div class="message-body">
+              {{ form.non_field_errors }}
+            </div>
+          </article>
+        {% endif %}
+        {% if form.errors and not form.non_field_errors %}
+          <article class="message is-danger">
+            <div class="message-body">
+              لطفاً خطاهای زیر را بررسی کنید و دوباره تلاش کنید.
+            </div>
+          </article>
+        {% endif %}
 
-      {% for field in form %}
-        <div class="field">
-          <label class="label" for="{{ field.id_for_label }}">{{ field.label }}</label>
-          <div class="control">
-            {% if field.field.widget.input_type == "checkbox" %}
-              <label class="checkbox">{{ field }} {{ field.help_text }}</label>
-            {% else %}
-              {{ field }}
-            {% endif %}
+        <form method="post" novalidate>
+          {% csrf_token %}
+
+          <div class="field">
+            <label class="label" for="{{ form.email.id_for_label }}">ایمیل</label>
+            <div class="control has-icons-left">
+              {{ form.email|add_class:"input"|attr:"placeholder:you@example.com"|attr:"dir:ltr"|attr:"autocomplete:email"|attr:"inputmode:email" }}
+              <span class="icon is-small is-left"><i class="fas fa-envelope"></i></span>
+            </div>
+            {% if form.email.errors %}<p class="help is-danger">{{ form.email.errors|striptags }}</p>{% endif %}
           </div>
-          {% if field.errors %}
-            <p class="help is-danger">{{ field.errors|striptags }}</p>
-          {% endif %}
-        </div>
-      {% endfor %}
 
-      <div class="field mt-5">
-        <div class="control">
-          <button type="submit" class="button is-primary is-fullwidth">ایجاد حساب</button>
-        </div>
+          <div class="field">
+            <label class="label" for="{{ form.full_name.id_for_label }}">نام و نام خانوادگی</label>
+            <div class="control has-icons-left">
+              {{ form.full_name|add_class:"input"|attr:"placeholder:نام کامل" }}
+              <span class="icon is-small is-left"><i class="fas fa-user"></i></span>
+            </div>
+            {% if form.full_name.errors %}<p class="help is-danger">{{ form.full_name.errors|striptags }}</p>{% endif %}
+          </div>
+
+          <div class="field">
+            <label class="label" for="{{ form.phone_number.id_for_label }}">تلفن</label>
+            <div class="control has-icons-left">
+              {{ form.phone_number|add_class:"input"|attr:"placeholder:+98 912 000 0000"|attr:"dir:ltr"|attr:"inputmode:tel"|attr:"autocomplete:tel-national" }}
+              <span class="icon is-small is-left"><i class="fas fa-phone"></i></span>
+            </div>
+            {% if form.phone_number.errors %}<p class="help is-danger">{{ form.phone_number.errors|striptags }}</p>{% endif %}
+          </div>
+
+          <div class="field">
+            <label class="label" for="{{ form.password1.id_for_label }}">رمز عبور</label>
+            <div class="control has-icons-left">
+              {{ form.password1|add_class:"input"|attr:"placeholder:حداقل ۸ کاراکتر"|attr:"dir:ltr"|attr:"autocomplete:new-password" }}
+              <span class="icon is-small is-left"><i class="fas fa-lock"></i></span>
+            </div>
+            {% if form.password1.errors %}<p class="help is-danger">{{ form.password1.errors|striptags }}</p>{% endif %}
+          </div>
+
+          <div class="field">
+            <label class="label" for="{{ form.password2.id_for_label }}">تکرار رمز عبور</label>
+            <div class="control has-icons-left">
+              {{ form.password2|add_class:"input"|attr:"placeholder:تکرار رمز"|attr:"dir:ltr"|attr:"autocomplete:new-password" }}
+              <span class="icon is-small is-left"><i class="fas fa-lock"></i></span>
+            </div>
+            {% if form.password2.errors %}<p class="help is-danger">{{ form.password2.errors|striptags }}</p>{% endif %}
+          </div>
+
+          <button type="submit" class="button is-primary is-fullwidth mt-4">
+            ایجاد حساب
+          </button>
+        </form>
+
+        <p class="has-text-centered is-size-7 mt-4">
+          قبلاً حساب دارید؟
+          <a href="{% url 'accounts:login' %}">وارد شوید</a>
+        </p>
+
+        <article class="message is-info is-light mt-4">
+          <div class="message-body is-size-7">
+            پس از ثبت‌نام، یک ایمیل فعال‌سازی برایتان ارسال می‌شود. پوشه‌های Spam/Promotions را هم چک کنید.
+          </div>
+        </article>
+
       </div>
-    </form>
+    </div>
 
   </div>
 </section>

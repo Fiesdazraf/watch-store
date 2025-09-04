@@ -86,7 +86,7 @@ def address_list_view(request):
 
 @login_required
 def address_create_view(request):
-    form = AddressForm(request.POST or None)
+    form = AddressForm(request.POST or None, user=request.user)
     if request.method == "POST" and form.is_valid():
         addr = form.save(commit=False)
         addr.user = request.user
@@ -101,7 +101,7 @@ def address_create_view(request):
 @login_required
 def address_update_view(request, pk):
     addr = get_object_or_404(Address, pk=pk, user=request.user)
-    form = AddressForm(request.POST or None, instance=addr)
+    form = AddressForm(request.POST or None, instance=addr, user=request.user)
     if request.method == "POST" and form.is_valid():
         addr = form.save()
         if addr.is_default:

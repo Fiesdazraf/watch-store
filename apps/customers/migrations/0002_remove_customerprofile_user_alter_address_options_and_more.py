@@ -24,7 +24,7 @@ class Migration(migrations.Migration):
         ),
         migrations.AddField(
             model_name="address",
-            name="state",
+            name="province",
             field=models.CharField(blank=True, max_length=80),
         ),
         migrations.AlterField(

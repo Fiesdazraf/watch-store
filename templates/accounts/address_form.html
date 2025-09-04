@@ -4,54 +4,159 @@
 
 {% block content %}
 <section class="section pt-5">
-  <div class="container">
+  <div class="container" style="max-width: 820px;">
 
-    <h1 class="title is-4">{% if form.instance.pk %}ویرایش آدرس{% else %}افزودن آدرس{% endif %}</h1>
+    <div class="card">
+      <header class="card-header">
+        <p class="card-header-title is-size-5">
+          {% if form.instance.pk %}ویرایش آدرس{% else %}افزودن آدرس{% endif %}
+        </p>
+      </header>
 
-    {% if form.non_field_errors %}
-      <article class="message is-danger">
-        <div class="message-body">
-          {{ form.non_field_errors }}
-        </div>
-      </article>
-    {% endif %}
+      <div class="card-content">
 
-    <form method="post" novalidate>
-      {% csrf_token %}
+        {% if form.non_field_errors %}
+          <article class="message is-danger mb-4">
+            <div class="message-body">
+              {{ form.non_field_errors }}
+            </div>
+          </article>
+        {% endif %}
 
-      {% for field in form %}
-        <div class="field">
-          <label class="label" for="{{ field.id_for_label }}">{{ field.label }}</label>
-          <div class="control">
-            {# add Bulma input/select/textarea classes dynamically #}
-            {% if field.field.widget.input_type == "checkbox" %}
-              <label class="checkbox">
-                {{ field }} {{ field.help_text }}
-              </label>
-            {% else %}
-              {% if field.field.widget.__class__.__name__ == "Select" or field.field.widget.__class__.__name__ == "SelectMultiple" %}
-                <div class="select is-fullwidth">
-                  {{ field }}
+        <form method="post" novalidate>
+          {% csrf_token %}
+
+          <!-- Full name + Phone -->
+          <div class="columns is-multiline">
+            <div class="column is-12-tablet is-6-desktop">
+              <div class="field">
+                <label class="label" for="{{ form.full_name.id_for_label }}">نام گیرنده</label>
+                <div class="control">
+                  {{ form.full_name|add_class:"input"|attr:"placeholder:Receiver full name"|attr:"autocomplete:name" }}
                 </div>
-              {% else %}
-                {{ field|add_class:"input" }}
-              {% endif %}
-              {% if field.help_text %}
-                <p class="help">{{ field.help_text }}</p>
-              {% endif %}
-            {% endif %}
-          </div>
-          {% if field.errors %}
-            <p class="help is-danger">{{ field.errors|striptags }}</p>
-          {% endif %}
-        </div>
-      {% endfor %}
+                {% if form.full_name.errors %}
+                  <p class="help is-danger">{{ form.full_name.errors|striptags }}</p>
+                {% endif %}
+              </div>
+            </div>
 
-      <div class="buttons mt-4">
-        <button class="button is-primary" type="submit">ذخیره</button>
-        <a href="{% url 'accounts:address_list' %}" class="button is-light">انصراف</a>
+            <div class="column is-12-tablet is-6-desktop">
+              <div class="field">
+                <label class="label" for="{{ form.phone_number.id_for_label }}">تلفن</label>
+                <div class="control">
+                  {{ form.phone_number|add_class:"input"|attr:"placeholder:+98 912 000 0000"|attr:"dir:ltr"|attr:"inputmode:tel"|attr:"autocomplete:tel-national" }}
+                </div>
+                {% if form.phone_number.errors %}
+                  <p class="help is-danger">{{ form.phone_number.errors|striptags }}</p>
+                {% endif %}
+              </div>
+            </div>
+
+            <!-- Address lines -->
+            <div class="column is-12">
+              <div class="field">
+                <label class="label" for="{{ form.line1.id_for_label }}">آدرس (خط ۱)</label>
+                <div class="control">
+                  {{ form.line1|add_class:"input"|attr:"placeholder:Street address, P.O. box, company"|attr:"dir:ltr"|attr:"autocomplete:street-address" }}
+                </div>
+                {% if form.line1.errors %}
+                  <p class="help is-danger">{{ form.line1.errors|striptags }}</p>
+                {% endif %}
+              </div>
+            </div>
+
+            <div class="column is-12">
+              <div class="field">
+                <label class="label" for="{{ form.line2.id_for_label }}">آدرس (خط ۲)</label>
+                <div class="control">
+                  {{ form.line2|add_class:"input"|attr:"placeholder:Apt, suite, unit, floor (optional)"|attr:"dir:ltr" }}
+                </div>
+                {% if form.line2.errors %}
+                  <p class="help is-danger">{{ form.line2.errors|striptags }}</p>
+                {% endif %}
+              </div>
+            </div>
+
+            <!-- City / State / Postal -->
+            <div class="column is-12-tablet is-4-desktop">
+              <div class="field">
+                <label class="label" for="{{ form.city.id_for_label }}">شهر</label>
+                <div class="control">
+                  {{ form.city|add_class:"input"|attr:"placeholder:City"|attr:"autocomplete:address-level2" }}
+                </div>
+                {% if form.city.errors %}
+                  <p class="help is-danger">{{ form.city.errors|striptags }}</p>
+                {% endif %}
+              </div>
+            </div>
+
+            <div class="column is-12-tablet is-4-desktop">
+              <div class="field">
+                <label class="label" for="{{ form.province.id_for_label }}">استان</label>
+                <div class="control">
+                  {{ form.province|add_class:"input"|attr:"placeholder:State / Province"|attr:"autocomplete:address-level1" }}
+                </div>
+                {% if form.province.errors %}
+                  <p class="help is-danger">{{ form.province.errors|striptags }}</p>
+                {% endif %}
+              </div>
+            </div>
+
+            <div class="column is-12-tablet is-4-desktop">
+              <div class="field">
+                <label class="label" for="{{ form.postal_code.id_for_label }}">کدپستی</label>
+                <div class="control">
+                  {{ form.postal_code|add_class:"input"|attr:"placeholder:Postal code"|attr:"dir:ltr"|attr:"inputmode:numeric"|attr:"autocomplete:postal-code" }}
+                </div>
+                {% if form.postal_code.errors %}
+                  <p class="help is-danger">{{ form.postal_code.errors|striptags }}</p>
+                {% endif %}
+              </div>
+            </div>
+
+            <!-- Country -->
+            <div class="column is-12-tablet is-6-desktop">
+              <div class="field">
+                <label class="label" for="{{ form.country.id_for_label }}">کشور</label>
+                <div class="control">
+                  {% if form.country.field.widget.__class__.__name__ in "Select SelectMultiple" %}
+                    <div class="select is-fullwidth">
+                      {{ form.country }}
+                    </div>
+                  {% else %}
+                    {{ form.country|add_class:"input"|attr:"placeholder:Country"|attr:"autocomplete:country-name" }}
+                  {% endif %}
+                </div>
+                {% if form.country.errors %}
+                  <p class="help is-danger">{{ form.country.errors|striptags }}</p>
+                {% endif %}
+              </div>
+            </div>
+
+            <!-- Default toggle -->
+            <div class="column is-12-tablet is-6-desktop">
+              <div class="field mt-5">
+                <label class="checkbox">
+                  {{ form.is_default }} آدرس پیش‌فرض
+                </label>
+                {% if form.is_default.errors %}
+                  <p class="help is-danger">{{ form.is_default.errors|striptags }}</p>
+                {% endif %}
+                <p class="help">در هر زمان فقط یک آدرس پیش‌فرض می‌توانید داشته باشید.</p>
+              </div>
+            </div>
+          </div>
+
+          <div class="buttons mt-4">
+            <button class="button is-primary" type="submit">
+              ذخیره
+            </button>
+            <a href="{% url 'accounts:address_list' %}" class="button is-light">انصراف</a>
+          </div>
+        </form>
+
       </div>
-    </form>
+    </div>
 
   </div>
 </section>

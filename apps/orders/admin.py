@@ -3,9 +3,6 @@ from django.contrib import admin
 from apps.orders.models import Cart, CartItem, Order, OrderItem
 
 
-# -----------------------------
-# Inlines
-# -----------------------------
 class CartItemInline(admin.TabularInline):
     model = CartItem
     extra = 0
@@ -14,6 +11,7 @@ class CartItemInline(admin.TabularInline):
     autocomplete_fields = ("product", "variant")
     show_change_link = True
 
+    @admin.display(description="Subtotal")
     def subtotal(self, obj):
         return obj.subtotal()
 
@@ -21,18 +19,17 @@ class CartItemInline(admin.TabularInline):
 class OrderItemInline(admin.TabularInline):
     model = OrderItem
     extra = 0
-    fields = ("product_name", "sku", "variant", "unit_price", "quantity", "total_price")
+    # ✅ product را اضافه کردیم
+    fields = ("product", "product_name", "sku", "variant", "unit_price", "quantity", "total_price")
     readonly_fields = ("total_price",)
-    autocomplete_fields = ("variant",)
+    autocomplete_fields = ("product", "variant")  # ✅
     show_change_link = True
 
+    @admin.display(description="Total")
     def total_price(self, obj):
         return obj.total_price
 
 
-# -----------------------------
-# Cart Admin
-# -----------------------------
 @admin.register(Cart)
 class CartAdmin(admin.ModelAdmin):
     list_display = ("id", "user_email", "session_key", "subtotal", "created_at", "updated_at")
@@ -40,6 +37,10 @@ class CartAdmin(admin.ModelAdmin):
     list_filter = ("created_at", "updated_at")
     list_select_related = ("user",)
     inlines = [CartItemInline]
+
+    def get_queryset(self, request):
+        qs = super().get_queryset(request)
+        return qs.select_related("user").prefetch_related("items")
 
     @admin.display(description="User")
     def user_email(self, obj):
@@ -50,13 +51,10 @@ class CartAdmin(admin.ModelAdmin):
         return obj.get_subtotal()
 
 
-# -----------------------------
-# Order Admin
-# -----------------------------
 @admin.register(Order)
 class OrderAdmin(admin.ModelAdmin):
     list_display = (
-        "id",  # یا اگر number داری: "number",
+        "number",
         "customer_email",
         "status",
         "payment_method",
@@ -68,29 +66,36 @@ class OrderAdmin(admin.ModelAdmin):
     )
     list_filter = ("status", "payment_method", "placed_at")
     search_fields = (
-        "id",  # اگر number داری: "number",
+        "number",
         "customer__user__email",
         "customer__user__full_name",
         "items__sku",
         "items__product_name",
     )
-    readonly_fields = ("subtotal", "grand_total", "placed_at", "updated_at")
+    readonly_fields = (
+        "number",
+        "subtotal",
+        "grand_total",
+        "placed_at",
+        "updated_at",
+    )  # ← number readonly
     list_select_related = ("customer", "customer__user", "shipping_address")
     inlines = [OrderItemInline]
     autocomplete_fields = ("customer", "shipping_address")
 
-    def save_model(self, request, obj, form, change):
-        # اول ذخیره کن تا اگر Order تازه ساخته شده و number/id لازم است، موجود باشد
-        super().save_model(request, obj, form, change)
-        # بعد از ذخیره، جمع‌ها را دقیق محاسبه و ذخیره کن
-        obj.recalc_totals(save=True)
+    def get_queryset(self, request):
+        qs = super().get_queryset(request)
+        return qs.select_related("customer", "customer__user", "shipping_address")
 
     @admin.display(description="Customer Email")
     def customer_email(self, obj):
         u = getattr(obj.customer, "user", None)
         return getattr(u, "email", "-")
 
-    # اکشن‌های مفید
+    def save_related(self, request, form, formsets, change):
+        super().save_related(request, form, formsets, change)
+        form.instance.recalc_totals(save=True)
+
     actions = ["mark_paid", "mark_shipped", "mark_canceled"]
 
     @admin.action(description="Mark selected orders as Paid")
