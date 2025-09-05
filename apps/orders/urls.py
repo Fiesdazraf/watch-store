@@ -30,4 +30,6 @@ urlpatterns = [
     path("payment/fake/", payment_fake_gateway_view, name="payment_fake"),
     # simple thank you page
     path("thanks/<str:number>/", order_thanks_view, name="thanks"),
+    path("orders/", order_history_view, name="history"),
+    path("orders/<str:number>/", order_detail_view, name="detail"),
 ]

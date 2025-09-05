@@ -5,37 +5,103 @@
 <section class="section pt-5">
   <div class="container">
 
-    <h1 class="title is-4">سفارش {{ order.number }}</h1>
+    <!-- Header -->
+    <div class="level mb-4">
+      <div class="level-left">
+        <div>
+          <h1 class="title is-4 mb-1">سفارش {{ order.number }}</h1>
+          <p class="has-text-grey is-size-7">
+            ثبت‌شده در: {{ order.placed_at|date:"Y-m-d H:i" }}
+          </p>
+        </div>
+      </div>
+      <div class="level-right">
+        <span class="tag is-medium
+          {% if order.status == 'paid' %}is-success{% elif order.status == 'shipped' %}is-link{% elif order.status == 'completed' %}is-primary{% elif order.status == 'canceled' %}is-danger{% else %}is-warning{% endif %}">
+          {{ order.get_status_display }}
+        </span>
+      </div>
+    </div>
 
     <!-- Meta -->
-    <div class="columns">
-      <div class="column">
+    <div class="columns is-multiline">
+      <div class="column is-12-tablet is-8-desktop">
         <div class="box">
-          <div class="columns is-multiline is-variable is-1">
-            <div class="column is-half">
-              <p><strong>تاریخ:</strong> {{ order.placed_at|date:"Y-m-d H:i" }}</p>
-            </div>
-            <div class="column is-half">
-              <p><strong>وضعیت:</strong> {{ order.get_status_display }}</p>
-            </div>
+          <div class="columns is-multiline is-variable is-2">
             <div class="column is-half">
               <p><strong>روش پرداخت:</strong> {{ order.get_payment_method_display }}</p>
             </div>
             <div class="column is-half">
               <p><strong>مبلغ نهایی:</strong> {{ order.grand_total }}</p>
             </div>
+            <div class="column is-half">
+              <p>
+                <strong>روش ارسال:</strong>
+                {% if order.shipping_method %}
+                  {{ order.shipping_method.name }}
+                  <span class="tag is-light is-info is-rounded ml-2">
+                    {{ order.shipping_method.est_days_min }}–{{ order.shipping_method.est_days_max }} روز
+                  </span>
+                {% else %}
+                  -
+                {% endif %}
+              </p>
+            </div>
             <div class="column is-full">
               <p><strong>آدرس ارسال:</strong> {{ order.shipping_address }}</p>
             </div>
+            {% if order.notes %}
+            <div class="column is-full">
+              <p><strong>یادداشت:</strong> {{ order.notes }}</p>
+            </div>
+            {% endif %}
           </div>
+        </div>
+      </div>
+
+      <!-- Totals Card -->
+      <div class="column is-12-tablet is-4-desktop">
+        <div class="box">
+          <h3 class="title is-6 mb-3">خلاصه مبلغ</h3>
+          <div class="is-flex is-justify-content-space-between mb-2">
+            <span>جمع جزء:</span>
+            <strong>{{ order.subtotal }}</strong>
+          </div>
+          <div class="is-flex is-justify-content-space-between mb-2">
+            <span>هزینه ارسال:</span>
+            <strong>{{ order.shipping_cost }}</strong>
+          </div>
+          {% if order.discount_total %}
+          <div class="is-flex is-justify-content-space-between mb-2">
+            <span>تخفیف:</span>
+            <strong class="has-text-success">-{{ order.discount_total }}</strong>
+          </div>
+          {% endif %}
+          <hr class="my-2">
+          <div class="is-flex is-justify-content-space-between">
+            <span>مبلغ نهایی:</span>
+            <strong class="has-text-weight-bold">{{ order.grand_total }}</strong>
+          </div>
+
+          {% if retry_url %}
+          <div class="mt-4">
+            <a class="button is-primary is-fullwidth" href="{{ retry_url }}">
+              پرداخت دوباره (درگاه دموی محلی)
+            </a>
+            <p class="is-size-7 has-text-grey mt-2">
+              فقط برای تست/نمونه‌کار. پس از پرداخت موفق وضعیت سفارش به «پرداخت‌شده» تغییر می‌کند.
+            </p>
+          </div>
+          {% endif %}
         </div>
       </div>
     </div>
 
     <!-- Items -->
     <h2 class="title is-5 mb-3">آیتم‌ها</h2>
+    {% if order.items.all %}
     <div class="table-container">
-      <table class="table is-fullwidth is-striped is-narrow">
+      <table class="table is-fullwidth is-striped is-hoverable is-narrow">
         <thead>
           <tr>
             <th>محصول</th>
@@ -58,36 +124,14 @@
         </tbody>
       </table>
     </div>
+    {% else %}
+      <div class="notification is-warning">هیچ آیتمی برای این سفارش ثبت نشده است.</div>
+    {% endif %}
 
-    <!-- Totals -->
-    <div class="columns is-mobile">
-      <div class="column is-offset-7-desktop is-5-desktop">
-        <div class="box">
-          <div class="is-flex is-justify-content-space-between mb-2">
-            <span>جمع جزء:</span>
-            <strong>{{ order.subtotal }}</strong>
-          </div>
-          <div class="is-flex is-justify-content-space-between mb-2">
-            <span>هزینه ارسال:</span>
-            <strong>{{ order.shipping_cost }}</strong>
-          </div>
-          {% if order.discount_total %}
-          <div class="is-flex is-justify-content-space-between mb-2">
-            <span>تخفیف:</span>
-            <strong>-{{ order.discount_total }}</strong>
-          </div>
-          {% endif %}
-          <hr class="my-2">
-          <div class="is-flex is-justify-content-space-between">
-            <span>مبلغ نهایی:</span>
-            <strong class="has-text-weight-bold">{{ order.grand_total }}</strong>
-          </div>
-        </div>
-      </div>
-    </div>
-
-    <div class="buttons">
-      <a href="{% url 'orders:order_history' %}" class="button is-light">بازگشت به سفارش‌ها</a>
+    <!-- Actions -->
+    <div class="buttons mt-4">
+      <!-- توجه: اگر نام مسیرت history هست، از orders:history استفاده کن -->
+      <a href="{% url 'orders:history' %}" class="button is-light">بازگشت به سفارش‌ها</a>
       <a href="{% url 'catalog:product_list' %}" class="button is-link is-light">ادامه خرید</a>
     </div>
 

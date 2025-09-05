@@ -1,0 +1,62 @@
+{% extends 'shop/base.html' %}
+
+{% block title %}My Orders{% endblock %}
+
+{% block content %}
+<section class="section">
+  <div class="container">
+    <h1 class="title">My Orders</h1>
+
+    {% if orders %}
+      <table class="table is-fullwidth">
+        <thead>
+          <tr>
+            <th>Number</th>
+            <th>Status</th>
+            <th>Total</th>
+            <th>Placed</th>
+            <th></th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for o in orders %}
+          <tr>
+            <td><strong>{{ o.number }}</strong></td>
+            <td>{{ o.get_status_display }}</td>
+            <td>{{ o.grand_total }}</td>
+            <td>{{ o.placed_at|date:"Y-m-d H:i" }}</td>
+            <td class="has-text-right">
+              <a class="button is-small is-link" href="{% url 'orders:detail' o.number %}">
+                View
+              </a>
+            </td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+
+      {% if orders.has_other_pages %}
+      <nav class="pagination is-centered" role="navigation" aria-label="pagination">
+        {% if orders.has_previous %}
+          <a class="pagination-previous" href="?page={{ orders.previous_page_number }}">Previous</a>
+        {% endif %}
+        {% if orders.has_next %}
+          <a class="pagination-next" href="?page={{ orders.next_page_number }}">Next page</a>
+        {% endif %}
+        <ul class="pagination-list">
+          {% for i in orders.paginator.page_range %}
+            {% if i == orders.number %}
+              <li><a class="pagination-link is-current">{{ i }}</a></li>
+            {% else %}
+              <li><a class="pagination-link" href="?page={{ i }}">{{ i }}</a></li>
+            {% endif %}
+          {% endfor %}
+        </ul>
+      </nav>
+      {% endif %}
+    {% else %}
+      <div class="notification is-info">No orders yet.</div>
+    {% endif %}
+  </div>
+</section>
+{% endblock %}
