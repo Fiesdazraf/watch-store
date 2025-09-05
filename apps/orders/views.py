@@ -5,6 +5,7 @@ from urllib.parse import urlencode
 
 from django.contrib import messages
 from django.contrib.auth.decorators import login_required
+from django.core.paginator import Paginator
 from django.db import transaction
 from django.http import HttpRequest, HttpResponse
 from django.shortcuts import get_object_or_404, redirect, render
@@ -24,6 +25,7 @@ from .models import (
     add_to_cart,
 )
 from .services import create_order_from_cart
+from .utils import send_order_confirmation_email, send_payment_receipt_email
 
 
 # ---------------------------------------------------------------------------
@@ -220,6 +222,7 @@ def checkout_view(request: HttpRequest) -> HttpResponse:
                 if notes:
                     order.notes = notes
                     order.save(update_fields=["notes"])
+                send_order_confirmation_email(order)
             except ValueError as e:
                 messages.error(request, str(e))
                 return redirect("orders:checkout")
@@ -293,6 +296,7 @@ def payment_return_view(request: HttpRequest) -> HttpResponse:
             if not payment.transaction_id:
                 payment.transaction_id = f"DEMO-{payment.pk:08d}"
             payment.mark_success(transaction_id=payment.transaction_id)
+            send_payment_receipt_email(order, payment)
         else:
             # Rare case (e.g., switched to COD)
             order.status = OrderStatus.PAID
@@ -314,6 +318,22 @@ def payment_return_view(request: HttpRequest) -> HttpResponse:
         messages.warning(request, "Unknown payment status.")
 
     return redirect("orders:thanks", number=order.number)
+
+
+@login_required
+def payment_history_view(request: HttpRequest) -> HttpResponse:
+    """
+    Show all payments of the current user (from their orders).
+    """
+    qs = (
+        Payment.objects.select_related("order", "order__customer", "order__customer__user")
+        .filter(order__customer__user=request.user)
+        .order_by("-created_at")
+    )
+    paginator = Paginator(qs, 12)
+    page = request.GET.get("page") or 1
+    payments = paginator.get_page(page)
+    return render(request, "orders/payment_list.html", {"payments": payments})
 
 
 @login_required

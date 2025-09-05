@@ -1,0 +1,13 @@
+Hello {{ order.customer.user.get_full_name|default:order.customer.user.email }},
+
+Thanks for your order {{ order.number }}.
+
+Status: {{ order.get_status_display }}
+Total:  {{ order.grand_total }}
+
+Shipping to:
+{{ order.shipping_address }}
+
+We’ll notify you when the payment is completed and the order is processed.
+
+— SafeCode Watch Store

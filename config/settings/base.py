@@ -105,7 +105,7 @@ LOGIN_REDIRECT_URL = "accounts:dashboard"
 LOGOUT_REDIRECT_URL = "home"  # یا هر صفحه‌ای که داری
 
 EMAIL_BACKEND = "django.core.mail.backends.console.EmailBackend"
-DEFAULT_FROM_EMAIL = "noreply@example.com"
+DEFAULT_FROM_EMAIL = "SafeCode Store <no-reply@safecode.store>"
 
 # ---------- Passwords ----------
 AUTH_PASSWORD_VALIDATORS = [

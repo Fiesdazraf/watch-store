@@ -1,0 +1,12 @@
+Hello {{ order.customer.user.get_full_name|default:order.customer.user.email }},
+
+Your payment was successful.
+
+Order:  {{ order.number }}
+Amount: {{ payment.amount }} {{ payment.currency }}
+Txn ID: {{ payment.transaction_id|default:"-" }}
+
+Current status: {{ order.get_status_display }}
+
+Thanks for shopping with us!
+— SafeCode Watch Store

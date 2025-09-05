@@ -8,6 +8,7 @@ from .views import (
     order_history_view,
     order_thanks_view,
     payment_fake_gateway_view,
+    payment_history_view,
     payment_return_view,
     remove_cart_item,
     update_cart_item,
@@ -32,4 +33,5 @@ urlpatterns = [
     path("thanks/<str:number>/", order_thanks_view, name="thanks"),
     path("orders/", order_history_view, name="history"),
     path("orders/<str:number>/", order_detail_view, name="detail"),
+    path("payment/", payment_history_view, name="payments"),
 ]
