@@ -1,45 +1,71 @@
-# apps/orders/services.py
 from decimal import Decimal
 
 from django.db import transaction
 
-from .models import CartItem, Order, OrderItem
+from apps.accounts.models import Address
+from apps.customers.models import Customer
+from apps.orders.models import ShippingMethod
+
+from .models import Cart, CartItem, Order, OrderItem, OrderStatus, Payment, PaymentMethod
 
 
 @transaction.atomic
-def create_order_from_cart(customer, shipping_address, cart) -> Order:
+def create_order_from_cart(
+    *,
+    customer: Customer,
+    shipping_address: Address,
+    cart: Cart,
+    shipping_method: ShippingMethod | None = None,
+    payment_method: str = PaymentMethod.GATEWAY,
+    discount: Decimal = Decimal("0.00"),
+) -> tuple[Order, Payment | None]:
+    """
+    Create an Order from a Cart, snapshotting prices and items.
+    Returns (Order, Payment or None).
+    """
+    if cart.items.count() == 0:
+        raise ValueError("Cart is empty.")
+
+    shipping_cost = shipping_method.base_price if shipping_method is not None else Decimal("0.00")
+
     order = Order.objects.create(
         customer=customer,
         shipping_address=shipping_address,
-        status="pending",
-        payment_method="gateway",
-        subtotal=Decimal("0.00"),
-        shipping_cost=Decimal("0.00"),
-        discount_total=Decimal("0.00"),
-        grand_total=Decimal("0.00"),
+        shipping_method=shipping_method,
+        status=(
+            OrderStatus.PENDING if payment_method == PaymentMethod.COD else OrderStatus.PENDING
+        ),  # later updated to PAID
+        payment_method=payment_method,
+        shipping_cost=shipping_cost,
+        discount_total=discount,
     )
-    subtotal = Decimal("0.00")
-    for ci in CartItem.objects.select_related("product", "variant").filter(cart=cart):
-        name = ci.product.title
-        sku = getattr(ci.variant, "sku", "") or getattr(ci.product, "sku", "")
-        unit_price = ci.unit_price
-        qty = ci.quantity
 
+    # Copy items from cart
+    for ci in CartItem.objects.select_related("product", "variant").filter(cart=cart):
         OrderItem.objects.create(
             order=order,
             product=ci.product,
             variant=ci.variant,
-            product_name=name,
-            sku=sku,
-            unit_price=unit_price,
-            quantity=qty,
+            product_name=getattr(ci.product, "name", "") or str(ci.product),
+            sku=getattr(ci.variant, "sku", "") or getattr(ci.product, "sku", ""),
+            unit_price=ci.unit_price,
+            quantity=ci.quantity,
         )
-        subtotal += unit_price * qty
 
-    order.subtotal = subtotal
-    order.grand_total = subtotal + order.shipping_cost - order.discount_total
-    order.save(update_fields=["subtotal", "grand_total"])
+    # Calculate totals with order method
+    order.recalc_totals(save=True)
 
-    # پاک کردن cart
+    # Create Payment row if needed
+    payment = None
+    if payment_method in {PaymentMethod.GATEWAY, PaymentMethod.CARD, PaymentMethod.FAKE}:
+        payment = Payment.objects.create(
+            order=order,
+            amount=order.grand_total,
+            method=payment_method,
+            status=Payment.Status.INITIATED,
+        )
+
+    # Clear cart items
     cart.items.all().delete()
-    return order
+
+    return order, payment
