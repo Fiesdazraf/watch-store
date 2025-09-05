@@ -1,0 +1,16 @@
+{% extends 'shop/base.html' %}
+
+{% block title %}Thank you{% endblock %}
+
+{% block content %}
+<section class="section">
+  <div class="container">
+    <h1 class="title">Thank you!</h1>
+    <p>Your order <strong>{{ order.number }}</strong> has been placed.</p>
+    <p>Status: <strong>{{ order.get_status_display }}</strong></p>
+    <p class="mt-4">
+      <a class="button is-link" href="/">Back to home</a>
+    </p>
+  </div>
+</section>
+{% endblock %}

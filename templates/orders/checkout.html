@@ -1,0 +1,85 @@
+{% extends 'shop/base.html' %}
+{% load static %}
+
+{% block title %}Checkout{% endblock %}
+
+{% block content %}
+<section class="section">
+  <div class="container">
+    <h1 class="title">Checkout</h1>
+
+    {% if items %}
+      <div class="columns">
+        <div class="column is-two-thirds">
+          <h2 class="subtitle">Your cart</h2>
+          <table class="table is-fullwidth">
+            <thead>
+              <tr>
+                <th>Product</th>
+                <th class="has-text-centered">Qty</th>
+                <th class="has-text-right">Unit</th>
+                <th class="has-text-right">Total</th>
+              </tr>
+            </thead>
+            <tbody>
+              {% for it in items %}
+              <tr>
+                <td>{{ it.product.name }}{% if it.variant %} ({{ it.variant.sku }}){% endif %}</td>
+                <td class="has-text-centered">{{ it.quantity }}</td>
+                <td class="has-text-right">{{ it.unit_price }}</td>
+                <td class="has-text-right">{{ it.subtotal }}</td>
+              </tr>
+              {% endfor %}
+            </tbody>
+            <tfoot>
+              <tr>
+                <th colspan="3" class="has-text-right">Subtotal</th>
+                <th class="has-text-right">{{ subtotal }}</th>
+              </tr>
+            </tfoot>
+          </table>
+        </div>
+
+        <div class="column">
+          <h2 class="subtitle">Shipping & Payment</h2>
+          <form method="post" novalidate>
+            {% csrf_token %}
+            <div class="field">
+              <label class="label">Address</label>
+              <div class="control">{{ form.address }}</div>
+              {% for e in form.address.errors %}<p class="help is-danger">{{ e }}</p>{% endfor %}
+            </div>
+
+            <div class="field">
+              <label class="label">Shipping method</label>
+              <div class="control">{{ form.shipping_method }}</div>
+              {% for e in form.shipping_method.errors %}<p class="help is-danger">{{ e }}</p>{% endfor %}
+            </div>
+
+            <div class="field">
+              <label class="label">Payment method</label>
+              <div class="control">{{ form.payment_method }}</div>
+              {% for e in form.payment_method.errors %}<p class="help is-danger">{{ e }}</p>{% endfor %}
+            </div>
+
+            <div class="field">
+              <label class="label">Notes (optional)</label>
+              <div class="control">{{ form.notes }}</div>
+            </div>
+
+            <div class="field">
+              <div class="control">
+                <button class="button is-primary is-fullwidth" type="submit">Place order</button>
+              </div>
+            </div>
+          </form>
+        </div>
+      </div>
+    {% else %}
+      <div class="notification is-warning">
+        Your cart is empty.
+      </div>
+    {% endif %}
+  </div>
+</section>
+{% endblock %}

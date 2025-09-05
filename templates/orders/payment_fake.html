@@ -1,0 +1,22 @@
+{% extends 'shop/base.html' %}
+
+{% block title %}Demo Payment{% endblock %}
+
+{% block content %}
+<section class="section">
+  <div class="container">
+    <h1 class="title">Demo Payment</h1>
+    <p class="subtitle">Order: <strong>{{ order_number }}</strong></p>
+    <p>Amount: <strong>{{ amount }}</strong></p>
+    <div class="buttons mt-5">
+      <a class="button is-success"
+         href="{{ return_url }}?order={{ order_number }}&status=ok">Pay Success</a>
+      <a class="button is-danger"
+         href="{{ return_url }}?order={{ order_number }}&status=fail">Pay Failed</a>
+      <a class="button"
+         href="{{ return_url }}?order={{ order_number }}&status=cancel">Cancel</a>
+    </div>
+    <p class="mt-5">This is a local demo gateway for portfolio/testing purposes.</p>
+  </div>
+</section>
+{% endblock %}
