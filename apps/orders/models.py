@@ -181,10 +181,14 @@ class Order(models.Model):
 
     @property
     def is_paid(self) -> bool:
-        """True if either Payment.status is PAID or Order.status is PAID."""
-        if hasattr(self, "payment") and self.payment is not None:
-            return self.payment.status == "paid"
-        return self.status in {OrderStatus.PAID}
+        """True if either Payment says paid or OrderStatus is PAID."""
+        if getattr(self, "payment", None):
+            if getattr(self.payment, "status", None) == "paid":
+                return True
+        try:
+            return self.status == OrderStatus.PAID
+        except Exception:
+            return False
 
     @property
     def is_awaiting_payment(self) -> bool:

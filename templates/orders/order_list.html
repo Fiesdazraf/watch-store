@@ -7,30 +7,55 @@
   <div class="container">
     <h1 class="title">My Orders</h1>
 
-    {% if orders %}
-      <table class="table is-fullwidth">
+    {% if orders and orders.object_list %}
+      <table class="table is-fullwidth is-striped is-hoverable">
         <thead>
           <tr>
             <th>Number</th>
             <th>Status</th>
             <th>Total</th>
             <th>Placed</th>
-            <th></th>
+            <th class="has-text-right">Actions</th>
           </tr>
         </thead>
         <tbody>
           {% for o in orders %}
+          {% with p=o.payment_obj %}
           <tr>
-            <td><strong>{{ o.number }}</strong></td>
-            <td>{{ o.get_status_display }}</td>
+            <td>
+              <a href="{% url 'orders:detail' o.number %}">
+                <strong>{{ o.number }}</strong>
+              </a>
+              {% if p and p.method %}
+                <span class="tag is-light is-rounded is-size-7 ml-2">{{ p.method.name|default:"-" }}</span>
+              {% endif %}
+            </td>
+
+            <td>
+              {% if o.is_paid %}
+                <span class="tag is-success">Paid</span>
+              {% elif p and p.status == "failed" %}
+                <span class="tag is-danger">Payment Failed</span>
+              {% else %}
+                <span class="tag is-warning">Awaiting Payment</span>
+              {% endif %}
+            </td>
+
             <td>{{ o.grand_total }}</td>
             <td>{{ o.placed_at|date:"Y-m-d H:i" }}</td>
+
             <td class="has-text-right">
               <a class="button is-small is-link" href="{% url 'orders:detail' o.number %}">
                 View
               </a>
+              {% if not o.is_paid %}
+              <a class="button is-small is-primary ml-1" href="{{ o.get_checkout_payment_url }}">
+                Pay / Retry
+              </a>
+              {% endif %}
             </td>
           </tr>
+          {% endwith %}
           {% endfor %}
         </tbody>
       </table>
