@@ -1,0 +1,18 @@
+{% extends "base.html" %}
+{% block title %}درگاه نمایشی{% endblock %}
+
+{% block content %}
+<section class="section pt-5">
+  <div class="container">
+    <h1 class="title is-4">درگاه نمایشی (Mock)</h1>
+    <div class="box">
+      <p>سفارش: <strong>{{ order.number }}</strong></p>
+      <p>مبلغ: <strong>{{ payment.amount }}</strong> تومان</p>
+      <hr>
+      <p class="mb-3">برای تست، یکی از دکمه‌ها را بزن:</p>
+      <a class="button is-success" href="{% url 'payments:success' order.number %}">پرداخت موفق</a>
+      <a class="button is-danger" href="{% url 'payments:failed' order.number %}">پرداخت ناموفق</a>
+    </div>
+  </div>
+</section>
+{% endblock %}

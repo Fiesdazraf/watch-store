@@ -1,0 +1,14 @@
+{% extends "base.html" %}
+{% block title %}پرداخت ناموفق{% endblock %}
+
+{% block content %}
+<section class="section pt-5">
+  <div class="container">
+    <div class="notification is-danger">
+      پرداخت ناموفق بود یا لغو شد. می‌توانید دوباره تلاش کنید.
+    </div>
+    <a class="button is-warning" href="{% url 'payments:checkout_payment' order.number %}">تلاش مجدد</a>
+    <a class="button is-light" href="{% url 'orders:detail' number=order.number %}">بازگشت به سفارش</a>
+  </div>
+</section>
+{% endblock %}

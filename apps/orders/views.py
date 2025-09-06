@@ -1,7 +1,6 @@
 from __future__ import annotations
 
 from decimal import Decimal
-from urllib.parse import urlencode
 
 from django.contrib import messages
 from django.contrib.auth.decorators import login_required
@@ -21,7 +20,6 @@ from .models import (
     Order,
     OrderStatus,
     Payment,
-    PaymentMethod,
     add_to_cart,
 )
 from .services import create_order_from_cart
@@ -192,7 +190,7 @@ def order_detail_view(request: HttpRequest, number: str) -> HttpResponse:
 def checkout_view(request: HttpRequest) -> HttpResponse:
     """
     GET: render checkout summary + form
-    POST: create order from cart -> redirect to gateway or thank you
+    POST: create order from cart -> redirect to payments:checkout_payment
     """
     cart = _get_cart(request)
 
@@ -201,7 +199,7 @@ def checkout_view(request: HttpRequest) -> HttpResponse:
         if form.is_valid():
             address = form.cleaned_data["address"]
             shipping_method = form.cleaned_data["shipping_method"]
-            payment_method = form.cleaned_data["payment_method"]
+            # payment_method = form.cleaned_data["payment_method"]  # ❌ ignore here
             notes = form.cleaned_data.get("notes", "")
 
             try:
@@ -211,42 +209,33 @@ def checkout_view(request: HttpRequest) -> HttpResponse:
                 return redirect("orders:checkout")
 
             try:
-                order, payment = create_order_from_cart(
+                order, _payment = create_order_from_cart(
                     customer=customer,
                     shipping_address=address,
                     cart=cart,
                     shipping_method=shipping_method,
-                    payment_method=payment_method,
+                    # payment_method=payment_method,  # optional to persist user's initial choice
                     discount=Decimal("0.00"),
                 )
                 if notes:
                     order.notes = notes
                     order.save(update_fields=["notes"])
+
+                # confirmation email about order creation (not payment)
                 send_order_confirmation_email(order)
+
             except ValueError as e:
                 messages.error(request, str(e))
                 return redirect("orders:checkout")
 
-            # COD -> no external gateway; show thanks
-            if payment_method == PaymentMethod.COD:
-                messages.success(request, "Order placed with Cash on Delivery.")
-                return redirect("orders:thanks", number=order.number)
+            # ✅ New flow: always go to payments app to choose/confirm payment
+            return redirect("payments:checkout_payment", order_number=order.number)
 
-            # Otherwise redirect to a fake/local gateway (demo)
-            qs = urlencode(
-                {
-                    "order": order.number,
-                    "amount": str(order.grand_total),
-                    "return_url": request.build_absolute_uri("/orders/payment/return/"),
-                }
-            )
-            return redirect(f"{request.build_absolute_uri('/orders/payment/fake/')}?{qs}")
     else:
         form = CheckoutForm(user=request.user)
 
     cart_items = cart.items.select_related("product", "variant")
     subtotal = cart.get_subtotal()
-
     ctx = {"form": form, "cart": cart, "items": cart_items, "subtotal": subtotal}
     return render(request, "orders/checkout.html", ctx)
 

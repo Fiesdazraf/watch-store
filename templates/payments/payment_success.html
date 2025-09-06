@@ -1,0 +1,14 @@
+{% extends "base.html" %}
+{% block title %}پرداخت موفق{% endblock %}
+
+{% block content %}
+<section class="section pt-5">
+  <div class="container">
+    <div class="notification is-success">
+      پرداخت با موفقیت انجام شد. شماره سفارش: <strong>{{ order.number }}</strong>
+    </div>
+    <p>کد تراکنش: <strong>{{ payment.transaction_id }}</strong></p>
+    <a class="button is-primary mt-4" href="{% url 'orders:detail' number=order.number %}">مشاهده سفارش</a>
+  </div>
+</section>
+{% endblock %}

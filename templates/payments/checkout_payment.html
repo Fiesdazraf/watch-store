@@ -1,0 +1,27 @@
+{% extends "base.html" %}
+{% block title %}انتخاب روش پرداخت{% endblock %}
+
+{% block content %}
+<section class="section pt-5">
+  <div class="container">
+    <h1 class="title is-4">انتخاب روش پرداخت برای سفارش {{ order.number }}</h1>
+
+    <div class="box">
+      <form method="post">
+        {% csrf_token %}
+        <div class="field">
+          <label class="label">روش پرداخت</label>
+          <div class="control">
+            {{ form.method }}
+          </div>
+        </div>
+
+        <p class="mb-4"><strong>مبلغ قابل پرداخت:</strong> {{ order.total_payable }} تومان</p>
+
+        <button class="button is-primary" type="submit">ادامه</button>
+        <a href="{% url 'orders:detail' number=order.number %}" class="button is-light">بازگشت</a>
+      </form>
+    </div>
+  </div>
+</section>
+{% endblock %}

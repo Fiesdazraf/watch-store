@@ -34,6 +34,7 @@ urlpatterns = [
     path("admin/", admin.site.urls),
     path("health/", healthcheck, name="health"),
     path("accounts/", include("apps.accounts.urls")),
+    path("payments/", include("apps.payments.urls", namespace="payments")),
     path("", home, name="home"),
     path("", include("apps.catalog.urls", namespace="catalog")),
     path("", include("apps.orders.urls", namespace="orders")),

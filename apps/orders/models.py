@@ -6,6 +6,7 @@ from decimal import Decimal
 from django.conf import settings
 from django.db import models, transaction
 from django.db.models import Q, UniqueConstraint
+from django.urls import reverse
 from django.utils import timezone
 
 from apps.accounts.models import Address
@@ -131,7 +132,6 @@ class Order(models.Model):
     shipping_address = models.ForeignKey(
         Address, on_delete=models.PROTECT, related_name="shipping_orders"
     )
-    # Optional, keep nullable if you haven't wired shipping UI yet
     shipping_method = models.ForeignKey(
         ShippingMethod,
         on_delete=models.PROTECT,
@@ -155,9 +155,7 @@ class Order(models.Model):
     placed_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
     notes = models.TextField(blank=True)
-
-    # e.g., SW00000042
-    number = models.CharField(max_length=16, unique=True, blank=True)
+    number = models.CharField(max_length=16, unique=True, blank=True)  # e.g. SW00000042
 
     class Meta:
         ordering = ["-placed_at"]
@@ -166,6 +164,62 @@ class Order(models.Model):
             models.Index(fields=["placed_at"]),
             models.Index(fields=["number"]),
         ]
+
+    # ---------- Payment-facing helpers ----------
+    @property
+    def total_payable(self) -> Decimal:
+        return self.grand_total
+
+    @property
+    def payment_obj(self):
+        return getattr(self, "payment", None)
+
+    @property
+    def payment_status(self) -> str:
+        p = self.payment_obj
+        return getattr(p, "status", "none")
+
+    @property
+    def is_paid(self) -> bool:
+        """True if either Payment.status is PAID or Order.status is PAID."""
+        if hasattr(self, "payment") and self.payment is not None:
+            return self.payment.status == "paid"
+        return self.status in {OrderStatus.PAID}
+
+    @property
+    def is_awaiting_payment(self) -> bool:
+        try:
+            return self.status == self.Status.AWAITING_PAYMENT
+        except AttributeError:
+            return self.status.lower() in {"pending", "awaiting_payment"}
+
+    def get_checkout_payment_url(self) -> str:
+        return reverse("payments:checkout_payment", kwargs={"order_number": self.number})
+
+    def get_payment_success_url(self) -> str:
+        return reverse("payments:success", kwargs={"order_number": self.number})
+
+    def get_payment_failed_url(self) -> str:
+        return reverse("payments:failed", kwargs={"order_number": self.number})
+
+    def get_retry_payment_url(self) -> str:
+        return self.get_checkout_payment_url()
+
+    def ensure_payment(self, default_method=None):
+        from apps.payments.models import Payment
+
+        payment, created = Payment.objects.get_or_create(
+            order=self,
+            defaults={
+                "method": default_method if default_method is not None else None,
+                "amount": self.total_payable,
+                "status": "pending",
+            },
+        )
+        if not created and payment.amount != self.total_payable:
+            payment.amount = self.total_payable
+            payment.save(update_fields=["amount"])
+        return payment
 
     # -------------------------
     # Calculations / helpers
@@ -185,14 +239,6 @@ class Order(models.Model):
         if save:
             self.save(update_fields=["subtotal", "grand_total", "updated_at"])
         return self.grand_total
-
-    @property
-    def is_paid(self) -> bool:
-        return self.status in {
-            OrderStatus.PAID,
-            OrderStatus.SHIPPED,
-            OrderStatus.COMPLETED,
-        }
 
     def save(self, *args, **kwargs):
         new = self.pk is None
