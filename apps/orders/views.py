@@ -18,12 +18,10 @@ from .models import (
     Cart,
     CartItem,
     Order,
-    OrderStatus,
-    Payment,
     add_to_cart,
 )
 from .services import create_order_from_cart
-from .utils import send_order_confirmation_email, send_payment_receipt_email
+from .utils import send_order_confirmation_email
 
 
 # ---------------------------------------------------------------------------
@@ -63,7 +61,6 @@ def _get_cart(request) -> Cart:
                         product=it.product, variant=it.variant
                     ).first()
                     if existing:
-                        # keep latest snapshot policy simple
                         existing.quantity += it.quantity
                         existing.save(update_fields=["quantity"])
                     else:
@@ -199,7 +196,6 @@ def checkout_view(request: HttpRequest) -> HttpResponse:
         if form.is_valid():
             address = form.cleaned_data["address"]
             shipping_method = form.cleaned_data["shipping_method"]
-            # payment_method = form.cleaned_data["payment_method"]  # ❌ ignore here
             notes = form.cleaned_data.get("notes", "")
 
             try:
@@ -214,7 +210,6 @@ def checkout_view(request: HttpRequest) -> HttpResponse:
                     shipping_address=address,
                     cart=cart,
                     shipping_method=shipping_method,
-                    # payment_method=payment_method,  # optional to persist user's initial choice
                     discount=Decimal("0.00"),
                 )
                 if notes:
@@ -241,79 +236,13 @@ def checkout_view(request: HttpRequest) -> HttpResponse:
 
 
 @login_required
-def payment_fake_gateway_view(request: HttpRequest) -> HttpResponse:
-    """
-    Local 'fake' gateway with three buttons: success / failed / cancel.
-    Only for demo/portfolio purposes.
-    """
-    order_number = request.GET.get("order")
-    amount = request.GET.get("amount") or "0.00"
-    return_url = request.GET.get("return_url")
-
-    if not (order_number and return_url):
-        messages.error(request, "Invalid gateway request.")
-        return redirect("orders:checkout")
-
-    ctx = {"order_number": order_number, "amount": amount, "return_url": return_url}
-    return render(request, "orders/payment_fake.html", ctx)
-
-
-@login_required
-def payment_return_view(request: HttpRequest) -> HttpResponse:
-    """
-    Handle the payment return from gateway.
-    Expects ?order=<number>&status=ok|fail|cancel
-    """
-    number = request.GET.get("order")
-    status = request.GET.get("status")
-
-    if not number:
-        messages.error(request, "Missing order number.")
-        return redirect("orders:checkout")
-
-    order = get_object_or_404(Order.objects.select_related("payment"), number=number)
-
-    # Ensure the order belongs to the current user
-    if order.customer.user != request.user:
-        messages.error(request, "Order not found.")
-        return redirect("orders:checkout")
-
-    payment: Payment | None = getattr(order, "payment", None)
-
-    if status == "ok":
-        if payment:
-            if not payment.transaction_id:
-                payment.transaction_id = f"DEMO-{payment.pk:08d}"
-            payment.mark_success(transaction_id=payment.transaction_id)
-            send_payment_receipt_email(order, payment)
-        else:
-            # Rare case (e.g., switched to COD)
-            order.status = OrderStatus.PAID
-            order.save(update_fields=["status"])
-        messages.success(request, "Payment successful. Thank you!")
-
-    elif status in {"fail", "error"}:
-        if payment:
-            payment.mark_failed(meta={"reason": "demo-failed"})
-        messages.error(request, "Payment failed.")
-
-    elif status == "cancel":
-        if payment:
-            payment.status = Payment.Status.CANCELED
-            payment.save(update_fields=["status"])
-        messages.info(request, "Payment canceled.")
-
-    else:
-        messages.warning(request, "Unknown payment status.")
-
-    return redirect("orders:thanks", number=order.number)
-
-
-@login_required
 def payment_history_view(request: HttpRequest) -> HttpResponse:
     """
     Show all payments of the current user (from their orders).
     """
+    # Local import to avoid tight coupling
+    from apps.payments.models import Payment
+
     qs = (
         Payment.objects.select_related("order", "order__customer", "order__customer__user")
         .filter(order__customer__user=request.user)

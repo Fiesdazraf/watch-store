@@ -1,12 +1,17 @@
+from __future__ import annotations
+
 from decimal import Decimal
+from typing import TYPE_CHECKING
 
 from django.db import transaction
 
 from apps.accounts.models import Address
 from apps.customers.models import Customer
-from apps.orders.models import ShippingMethod
 
-from .models import Cart, CartItem, Order, OrderItem, OrderStatus, Payment, PaymentMethod
+from .models import Cart, CartItem, Order, OrderItem, OrderStatus, PaymentMethod, ShippingMethod
+
+if TYPE_CHECKING:
+    from apps.payments.models import Payment as PaymentModel
 
 
 @transaction.atomic
@@ -18,11 +23,7 @@ def create_order_from_cart(
     shipping_method: ShippingMethod | None = None,
     payment_method: str = PaymentMethod.GATEWAY,
     discount: Decimal = Decimal("0.00"),
-) -> tuple[Order, Payment | None]:
-    """
-    Create an Order from a Cart, snapshotting prices and items.
-    Returns (Order, Payment or None).
-    """
+) -> tuple[Order, PaymentModel | None]:
     if cart.items.count() == 0:
         raise ValueError("Cart is empty.")
 
@@ -32,40 +33,23 @@ def create_order_from_cart(
         customer=customer,
         shipping_address=shipping_address,
         shipping_method=shipping_method,
-        status=(
-            OrderStatus.PENDING if payment_method == PaymentMethod.COD else OrderStatus.PENDING
-        ),  # later updated to PAID
+        status=OrderStatus.PENDING,
         payment_method=payment_method,
         shipping_cost=shipping_cost,
         discount_total=discount,
     )
 
-    # Copy items from cart
     for ci in CartItem.objects.select_related("product", "variant").filter(cart=cart):
         OrderItem.objects.create(
             order=order,
             product=ci.product,
             variant=ci.variant,
             product_name=getattr(ci.product, "name", "") or str(ci.product),
-            sku=getattr(ci.variant, "sku", "") or getattr(ci.product, "sku", ""),
+            sku=(getattr(ci.variant, "sku", "") or getattr(ci.product, "sku", "")),
             unit_price=ci.unit_price,
             quantity=ci.quantity,
         )
 
-    # Calculate totals with order method
     order.recalc_totals(save=True)
-
-    # Create Payment row if needed
-    payment = None
-    if payment_method in {PaymentMethod.GATEWAY, PaymentMethod.CARD, PaymentMethod.FAKE}:
-        payment = Payment.objects.create(
-            order=order,
-            amount=order.grand_total,
-            method=payment_method,
-            status=Payment.Status.INITIATED,
-        )
-
-    # Clear cart items
     cart.items.all().delete()
-
-    return order, payment
+    return order, None
