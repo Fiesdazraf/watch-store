@@ -1,1 +1,1 @@
-Payment received for order {{ order.number }}
+Payment receipt for order {{ order.number }}

@@ -1,14 +1,18 @@
-# apps/orders/utils.py
 from __future__ import annotations
 
 from django.conf import settings
 from django.core.mail import send_mail
 from django.template.loader import render_to_string
 
-from .models import Order, Payment
+from apps.payments.models import Payment
+
+from .models import Order
 
 
 def _send_email(*, subject: str, body: str, to_email: str) -> None:
+    """
+    Internal helper to send an email using Django's send_mail.
+    """
     from_email = getattr(settings, "DEFAULT_FROM_EMAIL", "no-reply@example.com")
     if not to_email:
         return
@@ -17,7 +21,7 @@ def _send_email(*, subject: str, body: str, to_email: str) -> None:
 
 def send_order_confirmation_email(order: Order) -> None:
     """
-    Send a simple order confirmation email to the customer.
+    Send order confirmation email to the customer after placing an order.
     """
     user = getattr(order.customer, "user", None)
     to_email = getattr(user, "email", "")

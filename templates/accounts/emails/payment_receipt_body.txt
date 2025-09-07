@@ -1,12 +1,15 @@
-Hello {{ order.customer.user.get_full_name|default:order.customer.user.email }},
+Hello {{ order.customer.user.first_name|default:"Customer" }},
 
-Your payment was successful.
+We have received your payment for order {{ order.number }}.
 
-Order:  {{ order.number }}
-Amount: {{ payment.amount }} {{ payment.currency }}
-Txn ID: {{ payment.transaction_id|default:"-" }}
+Payment details:
+- Amount: {{ payment.amount }}
+- Status: {{ payment.status|title }}
+{% if payment.transaction_id %}
+- Transaction ID: {{ payment.transaction_id }}
+{% endif %}
 
-Current status: {{ order.get_status_display }}
+Thank you for shopping with us.
 
-Thanks for shopping with us!
-— SafeCode Watch Store
+Best regards,
+The Store Team

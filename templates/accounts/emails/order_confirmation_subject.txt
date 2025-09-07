@@ -1,1 +1,1 @@
-Order {{ order.number }} received
+Your order {{ order.number }} has been received
