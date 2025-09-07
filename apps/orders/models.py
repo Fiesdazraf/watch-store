@@ -1,17 +1,19 @@
-# apps/orders/models.py
 from __future__ import annotations
 
 from decimal import Decimal
+from typing import TYPE_CHECKING  # ← اضافه کن
 
 from django.conf import settings
 from django.db import models, transaction
 from django.db.models import Q, UniqueConstraint
 from django.urls import reverse
-from django.utils import timezone
 
 from apps.accounts.models import Address
 from apps.catalog.models import Product, ProductVariant
 from apps.customers.models import Customer
+
+if TYPE_CHECKING:
+    from apps.payments.models import Payment as PaymentModel  # For type hint only, not actual model
 
 
 # =============================================================================
@@ -168,34 +170,31 @@ class Order(models.Model):
     # ---------- Payment-facing helpers ----------
     @property
     def total_payable(self) -> Decimal:
+        """Amount customer must pay (adjust if you add taxes/coupons later)."""
         return self.grand_total
 
     @property
     def payment_obj(self):
+        """Safe access to related Payment instance (or None)."""
         return getattr(self, "payment", None)
 
     @property
     def payment_status(self) -> str:
+        """Returns 'pending' | 'paid' | 'failed' | 'none' (if no Payment row)."""
         p = self.payment_obj
         return getattr(p, "status", "none")
 
     @property
     def is_paid(self) -> bool:
-        """True if either Payment says paid or OrderStatus is PAID."""
-        if getattr(self, "payment", None):
-            if getattr(self.payment, "status", None) == "paid":
-                return True
-        try:
-            return self.status == OrderStatus.PAID
-        except Exception:
-            return False
+        """True if Payment exists and is 'paid', or Order.status == PAID."""
+        if getattr(self, "payment", None) and getattr(self.payment, "status", None) == "paid":
+            return True
+        return self.status == OrderStatus.PAID
 
     @property
     def is_awaiting_payment(self) -> bool:
-        try:
-            return self.status == self.Status.AWAITING_PAYMENT
-        except AttributeError:
-            return self.status.lower() in {"pending", "awaiting_payment"}
+        """Pre-payment state in your enum."""
+        return self.status == OrderStatus.PENDING
 
     def get_checkout_payment_url(self) -> str:
         return reverse("payments:checkout_payment", kwargs={"order_number": self.number})
@@ -210,7 +209,12 @@ class Order(models.Model):
         return self.get_checkout_payment_url()
 
     def ensure_payment(self, default_method=None):
-        from apps.payments.models import Payment
+        """
+        Idempotently create a Payment row if missing and keep amount in sync.
+        Usage:
+            p = order.ensure_payment(default_method=<PaymentMethod instance or None>)
+        """
+        from apps.payments.models import Payment  # local import to avoid cycles
 
         payment, created = Payment.objects.get_or_create(
             order=self,
@@ -268,15 +272,8 @@ class Order(models.Model):
         payment_method: str,
         shipping_method: ShippingMethod | None = None,
         discount: Decimal = Decimal("0.00"),
-        tax: Decimal = Decimal("0.00"),  # not used in totals unless خودت اضافه کنی
-    ) -> tuple[Order, Payment | None]:
-        """
-        Create an Order from a Cart:
-        - Copies CartItems -> OrderItems with price snapshots
-        - Snapshots shipping cost from ShippingMethod (if any)
-        - Creates a Payment row when needed
-        - Clears the cart on success
-        """
+        tax: Decimal = Decimal("0.00"),
+    ) -> tuple[Order, PaymentModel | None]:  # ← type hint فقط برای IDE
         if cart.items.count() == 0:
             raise ValueError("Cart is empty.")
 
@@ -291,9 +288,7 @@ class Order(models.Model):
             payment_method=payment_method,
             shipping_cost=shipping_cost,
             discount_total=discount,
-            status=(
-                OrderStatus.PENDING if payment_method == PaymentMethod.COD else OrderStatus.PENDING
-            ),  # will be updated when payment succeeds
+            status=OrderStatus.PENDING,  # قبل از پرداخت
         )
 
         # Copy items
@@ -311,15 +306,8 @@ class Order(models.Model):
         # Totals
         order.recalc_totals(save=True)
 
-        # Create payment row for non-COD (or for FAKE/GATEWAY flows)
-        payment: Payment | None = None
-        if payment_method in {PaymentMethod.CARD, PaymentMethod.GATEWAY, PaymentMethod.FAKE}:
-            payment = Payment.objects.create(
-                order=order,
-                amount=order.grand_total,
-                method=payment_method,
-                status=Payment.Status.INITIATED,
-            )
+        # ❌ اینجا دیگر Payment نمی‌سازیم (روش پرداخت در اپ payments انتخاب/ثبت می‌شود)
+        payment: PaymentModel | None = None
 
         # Clear cart
         cart.items.all().delete()
@@ -374,64 +362,6 @@ class OrderItem(models.Model):
 
 
 # =============================================================================
-# Payment
-# =============================================================================
-class Payment(models.Model):
-    class Status(models.TextChoices):
-        INITIATED = "initiated", "Initiated"
-        PENDING = "pending", "Pending"
-        SUCCESS = "success", "Success"
-        FAILED = "failed", "Failed"
-        CANCELED = "canceled", "Canceled"
-
-    order = models.OneToOneField(Order, on_delete=models.CASCADE, related_name="payment")
-    amount = models.DecimalField(max_digits=12, decimal_places=2)
-    currency = models.CharField(max_length=3, default="IRR")
-    method = models.CharField(
-        max_length=12, choices=PaymentMethod.choices, default=PaymentMethod.GATEWAY
-    )
-    status = models.CharField(max_length=12, choices=Status.choices, default=Status.INITIATED)
-
-    # Gateway fields (generic)
-    gateway_ref = models.CharField(max_length=100, blank=True)  # e.g., authority code
-    transaction_id = models.CharField(max_length=100, blank=True)  # e.g., ref id / charge id
-    raw_request = models.JSONField(default=dict, blank=True)
-    raw_response = models.JSONField(default=dict, blank=True)
-
-    created_at = models.DateTimeField(auto_now_add=True)
-    updated_at = models.DateTimeField(auto_now=True)
-    paid_at = models.DateTimeField(null=True, blank=True)
-
-    class Meta:
-        ordering = ["-created_at"]
-
-    def __str__(self) -> str:
-        return f"Payment for Order {self.order.number or self.order_id} - {self.status}"
-
-    # -------------------------
-    # State transitions
-    # -------------------------
-    def mark_success(self, *, transaction_id: str | None = None, meta: dict | None = None) -> None:
-        self.status = self.Status.SUCCESS
-        if transaction_id:
-            self.transaction_id = transaction_id
-        if meta:
-            self.raw_response.update(meta)
-        self.paid_at = timezone.now()
-        self.save(update_fields=["status", "transaction_id", "raw_response", "paid_at"])
-
-        # Update order status
-        self.order.status = OrderStatus.PAID
-        self.order.save(update_fields=["status", "updated_at"])
-
-    def mark_failed(self, *, meta: dict | None = None) -> None:
-        self.status = self.Status.FAILED
-        if meta:
-            self.raw_response.update(meta)
-        self.save(update_fields=["status", "raw_response"])
-
-
-# =============================================================================
 # Services (helpers)
 # =============================================================================
 def add_to_cart(
@@ -469,13 +399,7 @@ def place_order_from_cart(
     payment_method: str,
     shipping_method: ShippingMethod | None = None,
     discount: Decimal = Decimal("0.00"),
-) -> tuple[Order, Payment | None]:
-    """
-    High-level service to place an order:
-    - Builds Order from Cart
-    - Creates Payment row if needed
-    - Clears Cart
-    """
+) -> tuple[Order, PaymentModel | None]:
     order, payment = Order.create_from_cart(
         cart=cart,
         customer=customer,
