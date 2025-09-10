@@ -17,3 +17,8 @@ function shell {
 function test {
     pytest @args
 }
+
+function check { 
+    python manage.py check @args 
+}
+

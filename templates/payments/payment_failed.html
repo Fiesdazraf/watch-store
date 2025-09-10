@@ -2,13 +2,20 @@
 {% block title %}پرداخت ناموفق{% endblock %}
 
 {% block content %}
-<section class="section pt-5">
-  <div class="container">
-    <div class="notification is-danger">
-      پرداخت ناموفق بود یا لغو شد. می‌توانید دوباره تلاش کنید.
+<section class="section">
+  <div class="container has-text-centered">
+    <h1 class="title is-3 has-text-danger">❌ پرداخت ناموفق بود</h1>
+    <p class="mt-3">سفارش شماره <strong>{{ order.number }}</strong> هنوز پرداخت نشده است.</p>
+    <p>کد تراکنش (در صورت وجود): <strong>{{ payment.external_id|default:"-" }}</strong></p>
+
+    <div class="buttons mt-4 is-centered">
+      <a href="{% url 'payments:checkout' order_number=order.number %}" class="button is-warning">
+        تلاش مجدد
+      </a>
+      <a href="{% url 'orders:detail' number=order.number %}" class="button">
+        بازگشت به سفارش
+      </a>
     </div>
-    <a class="button is-warning" href="{% url 'payments:checkout_payment' order.number %}">تلاش مجدد</a>
-    <a class="button is-light" href="{% url 'orders:detail' number=order.number %}">بازگشت به سفارش</a>
   </div>
 </section>
 {% endblock %}

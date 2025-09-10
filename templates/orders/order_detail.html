@@ -40,20 +40,28 @@
     <div class="box">
       <h2 class="title is-5 mb-3">وضعیت پرداخت</h2>
 
-      {% with p=order.payment_obj %}
+      {# با توجه به Meta: ordering = ("-created_at",) در مدل Payment، اولین رکورد جدیدترین است #}
+      {% with p=order.payments.first %}
         {% if p %}
-          <p><strong>روش پرداخت:</strong> {{ p.method.name|default:"-" }}</p>
+          <p><strong>درگاه/روش:</strong> {{ p.provider|default:"-" }}</p>
           <p><strong>وضعیت پرداخت:</strong>
-            {% if p.status == "paid" %}
+            {% if p.status == "succeeded" %}
               <span class="tag is-success">موفق</span>
             {% elif p.status == "failed" %}
               <span class="tag is-danger">ناموفق</span>
+            {% elif p.status == "processing" %}
+              <span class="tag is-info">در حال پردازش</span>
+            {% elif p.status == "canceled" %}
+              <span class="tag">لغو شده</span>
             {% else %}
               <span class="tag is-warning">در انتظار</span>
             {% endif %}
           </p>
-          {% if p.transaction_id %}
-            <p><strong>کد تراکنش:</strong> <code>{{ p.transaction_id }}</code></p>
+          {% if p.external_id %}
+            <p><strong>شناسه/کد تراکنش:</strong> <code>{{ p.external_id }}</code></p>
+          {% endif %}
+          {% if p.paid_at %}
+            <p><strong>تاریخ پرداخت:</strong> {{ p.paid_at|date:"Y-m-d H:i" }}</p>
           {% endif %}
         {% else %}
           <p class="has-text-grey">برای این سفارش هنوز رکورد پرداخت ثبت نشده است.</p>
@@ -62,7 +70,12 @@
 
       <div class="mt-4">
         {% if not order.is_paid %}
-          <a class="button is-primary" href="{{ order.get_checkout_payment_url }}">پرداخت / تلاش مجدد</a>
+          {# اگر متد کمکی URL داری، از همون استفاده کن؛ در غیر این صورت به payments:checkout لینک بده #}
+          {% if order.get_checkout_payment_url %}
+            <a class="button is-primary" href="{{ order.get_checkout_payment_url }}">پرداخت / تلاش مجدد</a>
+          {% else %}
+            <a class="button is-primary" href="{% url 'payments:checkout' order_number=order.number %}">پرداخت / تلاش مجدد</a>
+          {% endif %}
         {% else %}
           <a class="button is-light" href="{% url 'orders:list' %}">بازگشت به سفارش‌ها</a>
         {% endif %}

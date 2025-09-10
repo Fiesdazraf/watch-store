@@ -2,26 +2,39 @@
 {% block title %}انتخاب روش پرداخت{% endblock %}
 
 {% block content %}
-<section class="section pt-5">
+<section class="section">
   <div class="container">
-    <h1 class="title is-4">انتخاب روش پرداخت برای سفارش {{ order.number }}</h1>
+    <h1 class="title is-4">پرداخت سفارش {{ order.number }}</h1>
+    <p>مبلغ قابل پرداخت: <strong>{{ order.total_payable|default:order.total_amount }}</strong></p>
 
-    <div class="box">
-      <form method="post">
-        {% csrf_token %}
-        <div class="field">
-          <label class="label">روش پرداخت</label>
-          <div class="control">
-            {{ form.method }}
-          </div>
+    <form method="post" class="mt-4 box">
+      {% csrf_token %}
+      <div class="field">
+        <label class="label">روش پرداخت</label>
+        <div class="control">
+          <label class="radio">
+            <input type="radio" name="method" value="cod" required>
+            پرداخت در محل (COD)
+          </label>
+          <label class="radio ml-4">
+            <input type="radio" name="method" value="online" required>
+            پرداخت آنلاین (درگاه شبیه‌ساز)
+          </label>
         </div>
+      </div>
+      <div class="field mt-3">
+        <div class="control">
+          <button type="submit" class="button is-primary">ادامه</button>
+        </div>
+      </div>
+    </form>
 
-        <p class="mb-4"><strong>مبلغ قابل پرداخت:</strong> {{ order.total_payable }} تومان</p>
-
-        <button class="button is-primary" type="submit">ادامه</button>
-        <a href="{% url 'orders:detail' number=order.number %}" class="button is-light">بازگشت</a>
-      </form>
-    </div>
+    {% if last_payment %}
+      <p class="mt-5">
+        آخرین وضعیت پرداخت: <strong>{{ last_payment.get_status_display }}</strong>
+        ({{ last_payment.created_at|date:"Y-m-d H:i" }})
+      </p>
+    {% endif %}
   </div>
 </section>
 {% endblock %}

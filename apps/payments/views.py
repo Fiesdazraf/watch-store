@@ -1,114 +1,85 @@
+# apps/payments/views.py
 from django.contrib import messages
-from django.db import transaction
+from django.contrib.auth.decorators import login_required
 from django.shortcuts import get_object_or_404, redirect, render
-from django.utils.crypto import get_random_string
+from django.views.decorators.http import require_GET
 
 from apps.orders.models import Order
+from apps.payments.services import (
+    latest_payment,
+    mark_payment_failed,
+    mark_payment_success,
+    start_cod_payment,
+    start_fake_online_payment,
+)
 
-from .forms import PaymentMethodForm
-from .models import Payment
 
-
+@login_required
 def checkout_payment_view(request, order_number: str):
+    """
+    - GET: نمایش صفحه انتخاب روش پرداخت
+    - POST: خواندن request.POST['method'] در {'cod','online'} و شروع flow
+    """
     order = get_object_or_404(Order, number=order_number, user=request.user)
+
     if order.status != Order.Status.AWAITING_PAYMENT:
         messages.info(request, "This order is not awaiting payment.")
         return redirect("orders:detail", number=order.number)
 
     if request.method == "POST":
-        form = PaymentMethodForm(request.POST)
-        if form.is_valid():
-            method = form.cleaned_data["method"]
+        method = (request.POST.get("method") or "").strip().lower()
+        if method not in {"cod", "online"}:
+            messages.error(request, "Select a valid payment method.")
+            # FIX: route name must be 'checkout' (matches urls.py)
+            return redirect("payments:checkout", order_number=order.number)
 
-            # Ensure a Payment row exists (idempotent)
-            payment, _created = Payment.objects.get_or_create(
-                order=order,
-                defaults={
-                    "method": method,
-                    "amount": order.total_payable,
-                    "status": Payment.Status.PENDING,
-                },
-            )
-            if not _created:
-                payment.method = method
-                payment.amount = order.total_payable
-                payment.status = Payment.Status.PENDING
-                payment.save()
+        if method == "cod":
+            start_cod_payment(order)
+            messages.success(request, "Order marked as paid (Cash on Delivery).")
+            return redirect("payments:success", order_number=order.number)
 
-            if method.code == "cod":
-                # Cash on Delivery shortcut (no gateway)
-                with transaction.atomic():
-                    order.status = Order.Status.PAID
-                    order.save(update_fields=["status"])
-                    payment.status = Payment.Status.PAID
-                    payment.transaction_id = f"COD-{get_random_string(10)}"
-                    payment.save(update_fields=["status", "transaction_id"])
-                messages.success(request, "Order marked as paid (Cash on Delivery).")
-                return redirect("payments:success", order_number=order.number)
+        # method == "online"
+        _payment, redirect_url = start_fake_online_payment(order)
+        return redirect(redirect_url)
 
-            # Online → go to mock gateway
-            return redirect("payments:mock_gateway", order_number=order.number)
-    else:
-        form = PaymentMethodForm()
-
+    # GET
     return render(
         request,
         "payments/checkout_payment.html",
         {
             "order": order,
-            "form": form,
+            "last_payment": latest_payment(order),
         },
     )
 
 
+@login_required
+@require_GET
 def mock_gateway_view(request, order_number: str):
-    """A dummy page that simulates a hosted payment page with two buttons."""
+    """
+    صفحه درگاه شبیه‌ساز با دکمه‌های:
+    - Success -> payments:success
+    - Fail    -> payments:failed
+    """
     order = get_object_or_404(Order, number=order_number, user=request.user)
-    payment = getattr(order, "payment", None)
+    payment = latest_payment(order)
     if not payment:
         messages.error(request, "No payment session found.")
-        return redirect("payments:checkout_payment", order_number=order.number)
+        return redirect("payments:checkout", order_number=order.number)
 
-    # Show a fake gateway with two options: Success / Fail
     return render(request, "payments/mock_gateway.html", {"order": order, "payment": payment})
 
 
+@login_required
 def payment_success_view(request, order_number: str):
     order = get_object_or_404(Order, number=order_number, user=request.user)
-    payment = getattr(order, "payment", None)
-    if not payment:
-        messages.error(request, "No payment found for this order.")
-        return redirect("orders:detail", number=order.number)
-
-    if payment.status != Payment.Status.PAID:
-        # Mark paid if coming from mock success
-        with transaction.atomic():
-            payment.status = Payment.Status.PAID
-            if not payment.transaction_id:
-                payment.transaction_id = f"MOCK-{get_random_string(12)}"
-            payment.save(update_fields=["status", "transaction_id"])
-            order.status = Order.Status.PAID
-            order.save(update_fields=["status"])
-
-    # TODO: send emails/notifications here
+    payment = mark_payment_success(order)
+    # اگر خطایی بود، تابع بالا ValueError می‌دهد؛ در غیر این صورت payment داریم
     return render(request, "payments/payment_success.html", {"order": order, "payment": payment})
 
 
+@login_required
 def payment_failed_view(request, order_number: str):
     order = get_object_or_404(Order, number=order_number, user=request.user)
-    payment = getattr(order, "payment", None)
-    if not payment:
-        messages.error(request, "No payment found for this order.")
-        return redirect("orders:order_detail", number=order.number)
-
-    if payment.status != Payment.Status.FAILED:
-        with transaction.atomic():
-            payment.status = Payment.Status.FAILED
-            payment.transaction_id = f"MOCK-FAIL-{get_random_string(8)}"
-            payment.save(update_fields=["status", "transaction_id"])
-            # Optional: keep order awaiting payment so user can retry
-            # or mark canceled if you prefer:
-            # order.status = Order.Status.CANCELED
-            # order.save(update_fields=["status"])
-
+    payment = mark_payment_failed(order)
     return render(request, "payments/payment_failed.html", {"order": order, "payment": payment})

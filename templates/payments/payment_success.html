@@ -2,13 +2,15 @@
 {% block title %}پرداخت موفق{% endblock %}
 
 {% block content %}
-<section class="section pt-5">
-  <div class="container">
-    <div class="notification is-success">
-      پرداخت با موفقیت انجام شد. شماره سفارش: <strong>{{ order.number }}</strong>
-    </div>
-    <p>کد تراکنش: <strong>{{ payment.transaction_id }}</strong></p>
-    <a class="button is-primary mt-4" href="{% url 'orders:detail' number=order.number %}">مشاهده سفارش</a>
+<section class="section">
+  <div class="container has-text-centered">
+    <h1 class="title is-3 has-text-success">✅ پرداخت با موفقیت انجام شد</h1>
+    <p class="mt-3">سفارش شماره <strong>{{ order.number }}</strong> پرداخت شد.</p>
+    <p>کد رهگیری پرداخت: <strong>{{ payment.external_id }}</strong></p>
+
+    <a href="{% url 'orders:detail' number=order.number %}" class="button is-primary mt-4">
+      مشاهده سفارش
+    </a>
   </div>
 </section>
 {% endblock %}

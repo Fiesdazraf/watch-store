@@ -1,77 +1,83 @@
+# apps/payments/models.py
 from django.db import models
-from django.utils.translation import gettext_lazy as _
+from django.utils import timezone
 
 
-class PaymentMethod(models.Model):
-    name = models.CharField(max_length=50)
-    code = models.CharField(max_length=20, unique=True)  # e.g. "online", "cod"
-    is_active = models.BooleanField(default=True)
-
-    class Meta:
-        verbose_name = _("Payment Method")
-        verbose_name_plural = _("Payment Methods")
-
-    def __str__(self) -> str:
-        return f"{self.name} ({self.code})"
+class PaymentStatus(models.TextChoices):
+    PENDING = "pending", "Pending"
+    PROCESSING = "processing", "Processing"
+    SUCCEEDED = "succeeded", "Succeeded"
+    FAILED = "failed", "Failed"
+    CANCELED = "canceled", "Canceled"
 
 
 class Payment(models.Model):
-    class Status(models.TextChoices):
-        PENDING = "pending", _("Pending")
-        PAID = "paid", _("Paid")
-        FAILED = "failed", _("Failed")
+    """
+    A payment attempt for an order (supports retries).
+    Keep one row per attempt so we have a clean history.
+    """
 
-    order = models.OneToOneField(
+    order = models.ForeignKey(
         "orders.Order",
         on_delete=models.CASCADE,
-        related_name="payment",
+        related_name="payments",
+        db_index=True,
     )
-    # Option A: direct class reference (recommended)
-    method = models.ForeignKey(
-        PaymentMethod,
-        on_delete=models.PROTECT,
-        null=True,
+    amount = models.PositiveIntegerField(help_text="Amount in smallest currency unit (e.g., IRR).")
+    currency = models.CharField(max_length=10, default="IRR")
+    provider = models.CharField(
+        max_length=50, default="fake", db_index=True
+    )  # e.g., 'fake', 'zarinpal', etc.
+    status = models.CharField(
+        max_length=20,
+        choices=PaymentStatus.choices,
+        default=PaymentStatus.PENDING,
+        db_index=True,
+    )
+    external_id = models.CharField(
+        max_length=100,
         blank=True,
+        null=True,
+        help_text="External payment/tracking id provided by the gateway.",
     )
-    # Option B: string reference (alternative)
-    # method = models.ForeignKey(
-    #     "payments.PaymentMethod",
-    #     on_delete=models.PROTECT,
-    #     null=True,
-    #     blank=True,
-    # )
-
-    amount = models.DecimalField(max_digits=12, decimal_places=2)
-    status = models.CharField(max_length=20, choices=Status.choices, default=Status.PENDING)
-    transaction_id = models.CharField(max_length=100, blank=True, null=True)
-    raw_gateway_payload = models.JSONField(blank=True, null=True)
+    attempt_count = models.PositiveSmallIntegerField(default=0)
+    max_attempts = models.PositiveSmallIntegerField(default=3)
+    last_error = models.TextField(blank=True, null=True)
+    paid_at = models.DateTimeField(blank=True, null=True)
     created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
 
     class Meta:
-        ordering = ["-created_at"]
+        ordering = ("-created_at",)
         indexes = [
-            models.Index(fields=["status"]),
+            models.Index(fields=["status", "provider"]),
             models.Index(fields=["created_at"]),
-            models.Index(fields=["method"]),
         ]
-        verbose_name = _("Payment")
-        verbose_name_plural = _("Payments")
 
-    def __str__(self) -> str:
-        return f"Payment #{self.pk} - {self.order.number} - {self.status}"
+    def __str__(self):
+        return f"Payment #{self.pk} for Order {getattr(self.order, 'number', self.order_id)}"
 
-    @property
-    def is_paid(self) -> bool:
-        return self.status == self.Status.PAID
+    # ---- convenience state helpers
+    def can_retry(self) -> bool:
+        return (
+            self.status in {PaymentStatus.FAILED, PaymentStatus.PENDING}
+            and self.attempt_count < self.max_attempts
+        )
 
-    def mark_paid(self, transaction_id: str | None = None, save: bool = True):
-        self.status = self.Status.PAID
-        if transaction_id and not self.transaction_id:
-            self.transaction_id = transaction_id
+    def mark_processing(self, save=True):
+        self.status = PaymentStatus.PROCESSING
         if save:
-            self.save(update_fields=["status", "transaction_id"])
+            self.save(update_fields=["status", "updated_at"])
 
-    def mark_failed(self, save: bool = True):
-        self.status = self.Status.FAILED
+    def mark_failed(self, message: str = "", save=True):
+        self.status = PaymentStatus.FAILED
+        self.last_error = message or "Unknown error"
+        self.attempt_count = (self.attempt_count or 0) + 1
         if save:
-            self.save(update_fields=["status"])
+            self.save(update_fields=["status", "last_error", "attempt_count", "updated_at"])
+
+    def mark_succeeded(self, when=None, save=True):
+        self.status = PaymentStatus.SUCCEEDED
+        self.paid_at = when or timezone.now()
+        if save:
+            self.save(update_fields=["status", "paid_at", "updated_at"])

@@ -1,17 +1,23 @@
 {% extends "base.html" %}
-{% block title %}درگاه نمایشی{% endblock %}
+{% block title %}درگاه شبیه‌ساز{% endblock %}
 
 {% block content %}
-<section class="section pt-5">
+<section class="section">
   <div class="container">
-    <h1 class="title is-4">درگاه نمایشی (Mock)</h1>
-    <div class="box">
-      <p>سفارش: <strong>{{ order.number }}</strong></p>
-      <p>مبلغ: <strong>{{ payment.amount }}</strong> تومان</p>
-      <hr>
-      <p class="mb-3">برای تست، یکی از دکمه‌ها را بزن:</p>
-      <a class="button is-success" href="{% url 'payments:success' order.number %}">پرداخت موفق</a>
-      <a class="button is-danger" href="{% url 'payments:failed' order.number %}">پرداخت ناموفق</a>
+    <h1 class="title is-4">درگاه شبیه‌ساز پرداخت</h1>
+    <p>سفارش: <strong>{{ order.number }}</strong></p>
+    <p>مبلغ: <strong>{{ payment.amount }} {{ payment.currency }}</strong></p>
+
+    <div class="buttons mt-5">
+      <a href="{% url 'payments:success' order_number=order.number %}" class="button is-success">
+        پرداخت موفق
+      </a>
+      <a href="{% url 'payments:failed' order_number=order.number %}" class="button is-danger">
+        پرداخت ناموفق
+      </a>
+      <a href="{% url 'payments:checkout' order_number=order.number %}" class="button">
+        لغو و بازگشت
+      </a>
     </div>
   </div>
 </section>
