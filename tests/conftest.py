@@ -1,48 +1,97 @@
+# tests/conftest.py
+import shutil
+import tempfile
+
 import pytest
-from django.contrib.auth import get_user_model
+from django.test.utils import override_settings
 from model_bakery import baker
 
-User = get_user_model()
+
+# ---------- Global fast test tweaks ----------
+@pytest.fixture(autouse=True)
+def _fast_passwords(settings):
+    settings.PASSWORD_HASHERS = ["django.contrib.auth.hashers.MD5PasswordHasher"]
+    return settings
 
 
+@pytest.fixture(autouse=True)
+def _email_backend(settings):
+    settings.EMAIL_BACKEND = "django.core.mail.backends.locmem.EmailBackend"
+    return settings
+
+
+@pytest.fixture(autouse=True)
+def _dummy_cache(settings):
+    settings.CACHES = {
+        "default": {
+            "BACKEND": "django.core.cache.backends.locmem.LocMemCache",
+            "LOCATION": "test-cache",
+        }
+    }
+    return settings
+
+
+@pytest.fixture(autouse=True)
+def _tmp_media(settings):
+    tmp_dir = tempfile.mkdtemp()
+    with override_settings(MEDIA_ROOT=tmp_dir):
+        yield tmp_dir
+    shutil.rmtree(tmp_dir, ignore_errors=True)
+
+
+# ---------- Factories / Fixtures ----------
 @pytest.fixture
-def user(db):
-    return User.objects.create_user(email="u@test.com", password="pw12345", first_name="U")
+def user(db, django_user_model):
+    # مدل User شما فیلد first_name ندارد؛ فقط ایمیل و پسورد بده
+    return django_user_model.objects.create_user(
+        email="u@test.com",
+        password="pw12345",
+    )
 
 
 @pytest.fixture
 def customer(db, user):
-    return baker.make("customers.Customer", user=user)
+    from apps.customers.models import Customer
+
+    obj, _ = Customer.objects.get_or_create(user=user)
+    return obj
 
 
 @pytest.fixture
 def address(db, customer):
+    # Address در apps.accounts است (نه customers)
     return baker.make("accounts.Address", user=customer.user)
 
 
 @pytest.fixture
 def product(db):
-    return baker.make("catalog.Product", price="100.00", is_active=True, name="P1")
+    # به Product فیلد name نده چون در مدل شما وجود ندارد.
+    # اگر price هم متفاوت بود، bakery خودش مقدار دیفالت می‌سازد.
+    return baker.make("catalog.Product", is_active=True)
 
 
 @pytest.fixture
 def variant(db, product):
     return baker.make(
-        "catalog.ProductVariant", product=product, extra_price="20.00", is_active=True
+        "catalog.ProductVariant",
+        product=product,
+        is_active=True,
     )
 
 
 @pytest.fixture
 def shipping_method(db):
     return baker.make(
-        "orders.ShippingMethod", name="Post", code="post", base_price="10.00", is_active=True
+        "orders.ShippingMethod",
+        name="Post",
+        code="post",
+        base_price="10.00",
+        is_active=True,
     )
 
 
 @pytest.fixture
 def cart(db, user):
-    # anonymous or user cart; here we tie to user for simplicity
     from apps.orders.models import Cart
 
-    c = baker.make(Cart, user=user, session_key="")
-    return c
+    return baker.make(Cart, user=user, session_key="")

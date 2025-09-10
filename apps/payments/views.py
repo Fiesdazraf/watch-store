@@ -99,7 +99,7 @@ def payment_failed_view(request, order_number: str):
     payment = getattr(order, "payment", None)
     if not payment:
         messages.error(request, "No payment found for this order.")
-        return redirect("orders:detail", number=order.number)
+        return redirect("orders:order_detail", number=order.number)
 
     if payment.status != Payment.Status.FAILED:
         with transaction.atomic():

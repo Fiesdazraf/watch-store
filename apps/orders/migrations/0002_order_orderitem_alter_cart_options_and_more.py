@@ -162,7 +162,7 @@ class Migration(migrations.Migration):
             field=models.ForeignKey(
                 on_delete=django.db.models.deletion.PROTECT,
                 related_name="shipping_orders",
-                to="customers.address",
+                to="accounts.address",
             ),
         ),
         migrations.AddField(

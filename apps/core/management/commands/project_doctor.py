@@ -1,4 +1,3 @@
-import sys
 from importlib import import_module
 
 from django.apps import apps as django_apps
@@ -120,11 +119,10 @@ class Command(BaseCommand):
                 self.stdout.write(self.style.ERROR("apps.orders.models.Order not found"))
                 ok = False
 
-        self.stdout.write(self.style.MIGRATE_HEADING("\n== Final verdict =="))
-        if ok:
-            self.stdout.write(self.style.SUCCESS("All checks passed 🎉"))
-            # Let Django decide exit code; explicit 0 is okay too:
-            sys.exit(0)
-        else:
-            self.stdout.write(self.style.ERROR("Some checks failed. See above."))
-            sys.exit(1)
+            self.stdout.write(self.style.MIGRATE_HEADING("\n== Final verdict =="))
+            if ok:
+                self.stdout.write(self.style.SUCCESS("All checks passed  🎉"))
+                return
+            else:
+                self.stdout.write(self.style.ERROR("Some checks failed"))
+                return

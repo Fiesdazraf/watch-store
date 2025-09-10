@@ -1,3 +1,5 @@
+from decimal import Decimal
+
 from django.db import models
 from django.db.models import UniqueConstraint
 from django.utils.text import slugify
@@ -139,10 +141,18 @@ class Product(models.Model):
     )
 
     sku = models.CharField(max_length=64, unique=True)
-    price = models.DecimalField(max_digits=10, decimal_places=2)  # base currency
+    price = models.DecimalField(max_digits=10, decimal_places=2, default=Decimal("0.00"))
     is_active = models.BooleanField(default=True)
-
     created_at = models.DateTimeField(auto_now_add=True)
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        # کوئرس امن روی اینستنسِ در حافظه
+        if isinstance(getattr(self, "price", None), str):
+            try:
+                self.price = Decimal(self.price)
+            except Exception:
+                pass
 
     class Meta:
         ordering = ["-created_at"]
@@ -173,8 +183,16 @@ class ProductVariant(models.Model):
     attribute = models.CharField(max_length=60)  # e.g. "strap", "color", "size"
     is_active = models.BooleanField(default=True)
     value = models.CharField(max_length=60)  # e.g. "leather - brown", "blue", "42mm"
-    extra_price = models.DecimalField(max_digits=8, decimal_places=2, default=0)
+    extra_price = models.DecimalField(max_digits=10, decimal_places=2, default=Decimal("0.00"))
     stock = models.PositiveIntegerField(default=0)
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        if isinstance(getattr(self, "extra_price", None), str):
+            try:
+                self.extra_price = Decimal(self.extra_price)
+            except Exception:
+                pass
 
     class Meta:
         verbose_name = "Product Variant"

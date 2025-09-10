@@ -15,27 +15,27 @@ Including another URLconf
     2. Add a URL to urlpatterns:  path('blog/', include('blog.urls'))
 """
 
+# config/urls.py
 from django.contrib import admin
 from django.http import HttpResponse
 from django.urls import include, path
 
 
 def healthcheck(_):
-    # Simple health endpoint
     return HttpResponse("OK")
 
 
 def home(_):
-    # Temporary home page
-    return HttpResponse("<h1>Watch Store - Setup Compelete (Phase 1)</h1>")
+    return HttpResponse("<h1>Watch Store - Setup Complete (Phase 1)</h1>")
 
 
 urlpatterns = [
     path("admin/", admin.site.urls),
     path("health/", healthcheck, name="health"),
-    path("accounts/", include("apps.accounts.urls")),
-    path("payments/", include("apps.payments.urls", namespace="payments")),
-    path("", home, name="home"),
-    path("", include("apps.catalog.urls", namespace="catalog")),
-    path("", include("apps.orders.urls", namespace="orders")),
+    # ✅ namespace باید داخل include باشد (نه پارامتر path)
+    path("accounts/", include(("apps.accounts.urls", "accounts"), namespace="accounts")),
+    path("payments/", include(("apps.payments.urls", "payments"), namespace="payments")),
+    path("", include(("apps.catalog.urls", "catalog"), namespace="catalog")),
+    path("", include(("apps.orders.urls", "orders"), namespace="orders")),
+    path("", home, name="home"),  # می‌تونی اینو بالا/پایین نگه داری
 ]
