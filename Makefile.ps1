@@ -22,3 +22,6 @@ function check {
     python manage.py check @args 
 }
 
+function pre { 
+    pre-commit run --all-files @args 
+}
