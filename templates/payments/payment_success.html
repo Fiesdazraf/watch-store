@@ -3,14 +3,21 @@
 
 {% block content %}
 <section class="section">
-  <div class="container has-text-centered">
-    <h1 class="title is-3 has-text-success">✅ پرداخت با موفقیت انجام شد</h1>
-    <p class="mt-3">سفارش شماره <strong>{{ order.number }}</strong> پرداخت شد.</p>
-    <p>کد رهگیری پرداخت: <strong>{{ payment.external_id }}</strong></p>
+  <div class="container">
+    <h1 class="title is-4">پرداخت با موفقیت انجام شد 🎉</h1>
 
-    <a href="{% url 'orders:detail' number=order.number %}" class="button is-primary mt-4">
-      مشاهده سفارش
-    </a>
+    <div class="box">
+      <p>شماره سفارش: <strong>{{ order.number }}</strong></p>
+      <p>مبلغ: <strong>{{ payment.amount }} {{ payment.currency }}</strong></p>
+      {% if payment.external_id %}
+        <p>کد تراکنش: <code>{{ payment.external_id }}</code></p>
+      {% endif %}
+    </div>
+
+    <div class="buttons">
+      <a class="button is-primary" href="{{ order_detail_url }}">مشاهده سفارش</a>
+      <a class="button" href="{% url 'orders:list' %}">بازگشت به سفارش‌ها</a>
+    </div>
   </div>
 </section>
 {% endblock %}
