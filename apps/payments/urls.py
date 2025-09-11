@@ -4,6 +4,7 @@ from django.urls import path
 from .views import (
     checkout_payment_view,
     mock_gateway_view,
+    payment_canceled_view,
     payment_failed_view,
     payment_success_view,
 )
@@ -15,4 +16,5 @@ urlpatterns = [
     path("mock-gateway/<str:order_number>/", mock_gateway_view, name="mock_gateway"),
     path("success/<str:order_number>/", payment_success_view, name="success"),
     path("failed/<str:order_number>/", payment_failed_view, name="failed"),
+    path("canceled/<str:order_number>/", payment_canceled_view, name="canceled"),
 ]

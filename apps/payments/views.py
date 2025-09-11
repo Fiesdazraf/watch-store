@@ -19,10 +19,6 @@ from apps.payments.services import (
 
 
 def _order_detail_url(order):
-    """
-    Try several common route names/kwargs to find an order detail url.
-    Fallback to orders:list.
-    """
     candidates = [
         ("orders:detail", {"number": getattr(order, "number", None)}),
         ("orders:detail", {"pk": getattr(order, "pk", None)}),
@@ -34,17 +30,30 @@ def _order_detail_url(order):
         ("orders:view", {"pk": getattr(order, "pk", None)}),
     ]
     for name, kwargs in candidates:
-        # حذف None ها از kwargs
         kwargs = {k: v for k, v in (kwargs or {}).items() if v is not None}
         try:
             return reverse(name, kwargs=kwargs) if kwargs else reverse(name)
         except NoReverseMatch:
             continue
-    # fallback
-    try:
-        return reverse("orders:list")
-    except NoReverseMatch:
-        return "/"
+    return "/"
+
+
+def _orders_list_url():
+    """لیست سفارش‌ها با fallback به /"""
+    candidates = [
+        "orders:list",
+        "orders:index",
+        "orders:all",
+        "orders:history",
+        "orders:my_orders",
+        "orders:order_list",
+    ]
+    for name in candidates:
+        try:
+            return reverse(name)
+        except NoReverseMatch:
+            continue
+    return "/"
 
 
 @login_required
@@ -115,7 +124,8 @@ def payment_success_view(request, order_number: str):
         {
             "order": order,
             "payment": payment,
-            "order_detail_url": _order_detail_url(order),  # ← NEW
+            "order_detail_url": _order_detail_url(order),
+            "orders_list_url": _orders_list_url(),  # ← NEW
         },
     )
 
@@ -130,7 +140,8 @@ def payment_failed_view(request, order_number: str):
         {
             "order": order,
             "payment": payment,
-            "order_detail_url": _order_detail_url(order),  # ← NEW
+            "order_detail_url": _order_detail_url(order),
+            "orders_list_url": _orders_list_url(),  # ← NEW
         },
     )
 
@@ -151,6 +162,7 @@ def payment_canceled_view(request, order_number: str):
         {
             "order": order,
             "payment": payment,
-            "order_detail_url": _order_detail_url(order),  # ← NEW
+            "order_detail_url": _order_detail_url(order),
+            "orders_list_url": _orders_list_url(),  # ← NEW
         },
     )

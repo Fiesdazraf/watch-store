@@ -18,6 +18,9 @@
       <a href="{% url 'payments:checkout' order_number=order.number %}" class="button">
         لغو و بازگشت
       </a>
+      <a href="{% url 'payments:canceled' order_number=order.number %}" class="button">
+        لغو 
+      </a>
     </div>
   </div>
 </section>

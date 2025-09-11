@@ -77,7 +77,7 @@
             <a class="button is-primary" href="{% url 'payments:checkout' order_number=order.number %}">پرداخت / تلاش مجدد</a>
           {% endif %}
         {% else %}
-          <a class="button is-light" href="{% url 'orders:list' %}">بازگشت به سفارش‌ها</a>
+          <a class="button is-light" href="{{orders_list_url}}">بازگشت به سفارش‌ها</a>
         {% endif %}
       </div>
     </div>
