@@ -1,5 +1,6 @@
 # apps/payments/services.py
 from django.conf import settings
+from django.core.exceptions import FieldDoesNotExist
 from django.db import transaction
 from django.urls import reverse
 from django.utils import timezone
@@ -15,8 +16,8 @@ def shop_currency() -> str:
 
 
 def order_amount(order: Order) -> int:
-    # Support both common names
-    return getattr(order, "total_payable", getattr(order, "total_amount", 0)) or 0
+    """Return payable amount as int (IRR). Adjust here if you use Decimal elsewhere."""
+    return int(getattr(order, "total_payable", getattr(order, "total_amount", 0)) or 0)
 
 
 def latest_payment(order: Order) -> Payment | None:
@@ -29,8 +30,9 @@ def latest_payment(order: Order) -> Payment | None:
 def is_awaiting_payment(order: Order) -> bool:
     """
     True if order is not yet paid (independent of Order.Status enum).
+
     Priority:
-      1) If order.has 'is_paid', use it (False => awaiting)
+      1) If order has 'is_paid', use it (False => awaiting)
       2) If 'Status' enum exists, check AWAITING_PAYMENT when available
       3) If 'status' field exists (str), treat unpaid-like states as awaiting
       4) Fallback True
@@ -39,24 +41,31 @@ def is_awaiting_payment(order: Order) -> bool:
     if hasattr(order, "is_paid"):
         try:
             return not bool(order.is_paid)
-        except Exception:
+        except (AttributeError, ValueError, TypeError):
+            # attribute exists but value is malformed
             pass
 
     # 2) Enum if exists
     Status = getattr(Order, "Status", None)
     if Status is not None and hasattr(Status, "AWAITING_PAYMENT"):
         try:
-            return order.status == Status.AWAITING_PAYMENT
-        except Exception:
+            return order.status == Status.AWAITING_PAYMENT  # type: ignore[attr-defined]
+        except (AttributeError, ValueError):
             pass
 
     # 3) String status heuristic
     try:
         order._meta.get_field("status")
+    except FieldDoesNotExist:
+        # No status field → assume awaiting to be safe
+        return True
+    else:
         val = getattr(order, "status", None)
-        return val in (None, "", "awaiting_payment", "pending", "unpaid", "new")
-    except Exception:
-        pass
+        if isinstance(val, str):
+            s = val.strip().lower()
+            return s in {"awaiting_payment", "pending", "unpaid", "new", ""}
+        # Unknown type → be safe
+        return True
 
     # 4) default
     return True
@@ -75,35 +84,32 @@ def mark_order_paid(order: Order) -> None:
     Status = getattr(Order, "Status", None)
     if Status is not None and hasattr(Status, "PAID"):
         try:
-            order.status = Status.PAID
+            order.status = Status.PAID  # type: ignore[attr-defined]
             order.save(update_fields=["status"])
             return
-        except Exception:
+        except (AttributeError, ValueError):
             pass
 
     # Try boolean is_paid
     if hasattr(order, "is_paid"):
-        # avoid assigning property
         is_prop = isinstance(getattr(order.__class__, "is_paid", None), property)
         if not is_prop:
             try:
                 order.is_paid = True  # type: ignore[attr-defined]
                 order.save(update_fields=["is_paid"])
                 return
-            except Exception:
+            except (AttributeError, ValueError, TypeError):
                 pass
 
     # Try string status
     try:
         order._meta.get_field("status")
+    except FieldDoesNotExist:
+        # Fallback: just save
+        order.save()
+    else:
         order.status = "paid"  # type: ignore[attr-defined]
         order.save(update_fields=["status"])
-        return
-    except Exception:
-        pass
-
-    # Fallback: just save
-    order.save()
 
 
 # --------------------------------------------------------------------
@@ -111,9 +117,7 @@ def mark_order_paid(order: Order) -> None:
 # --------------------------------------------------------------------
 @transaction.atomic
 def start_cod_payment(order: Order) -> Payment:
-    """
-    Demo: Cash on Delivery — immediately mark payment succeeded and order paid.
-    """
+    """Demo: Cash on Delivery — immediately mark payment succeeded and order paid."""
     payment = Payment.objects.create(
         order=order,
         amount=order_amount(order),
@@ -132,16 +136,14 @@ def can_retry(order: Order) -> bool:
     p = latest_payment(order)
     if not p:
         return True
-    return p.status in {PaymentStatus.FAILED, PaymentStatus.PENDING} and (p.attempt_count or 0) < (
-        p.max_attempts or 3
-    )
+    attempts = p.attempt_count or 0
+    max_attempts = p.max_attempts or 3
+    return p.status in {PaymentStatus.FAILED, PaymentStatus.PENDING} and attempts < max_attempts
 
 
 @transaction.atomic
 def start_fake_online_payment(order: Order) -> tuple[Payment, str]:
-    """
-    Demo: Fake gateway — create attempt, set PROCESSING, return mock bank URL.
-    """
+    """Demo: Fake gateway — create attempt, set PROCESSING, return mock bank URL."""
     if not can_retry(order):
         raise ValueError("Max retry attempts reached.")
 
@@ -165,9 +167,7 @@ def start_fake_online_payment(order: Order) -> tuple[Payment, str]:
 
 @transaction.atomic
 def mark_payment_success(order: Order) -> Payment:
-    """
-    Demo: Mark the latest attempt succeeded and set order to PAID.
-    """
+    """Demo: Mark the latest attempt succeeded and set order to PAID."""
     payment = latest_payment(order)
     if not payment:
         raise ValueError("No payment to succeed.")
@@ -178,7 +178,6 @@ def mark_payment_success(order: Order) -> Payment:
         if not payment.external_id:
             payment.external_id = f"MOCK-{get_random_string(12)}"
         payment.save(update_fields=["status", "paid_at", "external_id", "updated_at"])
-    # Mark order paid in a schema-agnostic way
     mark_order_paid(order)
     return payment
 
@@ -187,9 +186,7 @@ def mark_payment_success(order: Order) -> Payment:
 def mark_payment_failed(
     order: Order, message: str = "User failed the payment on fake gateway."
 ) -> Payment:
-    """
-    Demo: Mark the latest attempt failed. Keep order as awaiting payment so user can retry.
-    """
+    """Demo: Mark the latest attempt failed. Keep order awaiting so user can retry."""
     payment = latest_payment(order)
     if not payment:
         raise ValueError("No payment to fail.")
