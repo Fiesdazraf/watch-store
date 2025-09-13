@@ -1,11 +1,11 @@
 # apps/orders/models.py
 from __future__ import annotations
 
-from decimal import Decimal
+from decimal import ROUND_HALF_UP, Decimal
 from typing import TYPE_CHECKING
 
 from django.conf import settings
-from django.db import models
+from django.db import models, transaction
 from django.db.models import Q, QuerySet, UniqueConstraint
 from django.urls import reverse
 
@@ -138,6 +138,7 @@ class ShippingMethod(models.Model):
 # =============================================================================
 class OrderStatus(models.TextChoices):
     PENDING = "pending", "Pending"
+    PROCESSING = "processing", "Processing"
     PAID = "paid", "Paid"
     SHIPPED = "shipped", "Shipped"
     COMPLETED = "completed", "Completed"
@@ -233,7 +234,7 @@ class Order(models.Model):
         """
         if not self.grand_total or self.grand_total <= Decimal("0.00"):
             try:
-                self.recalc_totals(save=True)
+                self.recalc_totals(save=False)
             except Exception:
                 pass
         return self.grand_total or Decimal("0.00")
@@ -269,20 +270,29 @@ class Order(models.Model):
     def get_retry_payment_url(self) -> str:
         return self.get_checkout_payment_url()
 
+    def get_absolute_url(self) -> str:
+        return reverse("orders:detail", kwargs={"number": self.number})
+
     # -------------------------
     # Calculations / helpers
     # -------------------------
+
     def recalc_totals(self, save: bool = True) -> Decimal:
         subtotal = Decimal("0.00")
         for unit_price, qty in self.items.values_list("unit_price", "quantity"):
             subtotal += (unit_price or Decimal("0.00")) * qty
 
-        self.subtotal = subtotal
-        self.grand_total = (
+        def _q2(x: Decimal) -> Decimal:
+            return (x or Decimal("0.00")).quantize(Decimal("0.01"), rounding=ROUND_HALF_UP)
+
+        self.subtotal = _q2(subtotal)
+        total = (
             self.subtotal
             + (self.shipping_cost or Decimal("0.00"))
             - (self.discount_total or Decimal("0.00"))
         )
+        total = _q2(total)
+        self.grand_total = total if total >= Decimal("0.00") else Decimal("0.00")
 
         if save:
             self.save(update_fields=["subtotal", "grand_total", "updated_at"])
@@ -298,13 +308,48 @@ class Order(models.Model):
     def __str__(self) -> str:
         return f"Order {self.number or self.id} - {self.get_status_display()}"
 
+    def set_status(self, new_status: str, by_user=None, note: str | None = None):
+        """
+        Safe status transition using OrderStatus.
+        Allowed:
+          pending -> paid | canceled
+          paid    -> shipped | canceled
+          shipped -> completed
+          completed (terminal)
+          canceled (terminal)
+        """
+        from django.core.exceptions import ValidationError
+
+        allowed = {
+            OrderStatus.PENDING: {OrderStatus.PROCESSING, OrderStatus.PAID, OrderStatus.CANCELED},
+            OrderStatus.PROCESSING: {OrderStatus.SHIPPED, OrderStatus.CANCELED},
+            OrderStatus.PAID: {OrderStatus.SHIPPED, OrderStatus.CANCELED},
+            OrderStatus.SHIPPED: {OrderStatus.COMPLETED},
+            OrderStatus.COMPLETED: set(),
+            OrderStatus.CANCELED: set(),
+        }
+
+        if new_status not in OrderStatus.values:
+            raise ValidationError("Invalid status")
+
+        if new_status not in allowed.get(self.status, set()):
+            raise ValidationError(f"Illegal transition from {self.status} to {new_status}")
+
+        with transaction.atomic():
+            self.status
+            self.status = new_status
+            self.save(update_fields=["status", "updated_at"])
+            # اگر بعداً StatusLog اضافه کردی، اینجا ثبتش کن:
+            # self.status_logs.create(old_status=old, new_status=new_status, by=by_user, note=note)
+
+        return self
+
 
 class OrderItem(models.Model):
     order = models.ForeignKey(Order, related_name="items", on_delete=models.CASCADE)
     product = models.ForeignKey(Product, on_delete=models.PROTECT)
     variant = models.ForeignKey(ProductVariant, on_delete=models.PROTECT, null=True, blank=True)
 
-    # Snapshots for denormalization (safe against later changes)
     product_name = models.CharField(max_length=200, blank=True)
     sku = models.CharField(max_length=64, blank=True)
 
@@ -322,8 +367,13 @@ class OrderItem(models.Model):
         return (self.unit_price or Decimal("0.00")) * self.quantity
 
     def save(self, *args, **kwargs):
+        # Use title if your Product model uses 'title'
         if not self.product_name:
-            self.product_name = getattr(self.product, "name", "") or str(self.product)
+            self.product_name = (
+                getattr(self.product, "title", None)
+                or getattr(self.product, "name", "")
+                or str(self.product)
+            )
         if not self.sku:
             self.sku = getattr(self.variant, "sku", "") or getattr(self.product, "sku", "") or ""
         if not self.unit_price:

@@ -35,6 +35,7 @@ urlpatterns = [
     # ✅ namespace باید داخل include باشد (نه پارامتر path)
     path("accounts/", include(("apps.accounts.urls", "accounts"), namespace="accounts")),
     path("payments/", include(("apps.payments.urls", "payments"), namespace="payments")),
+    path("backoffice/", include("apps.backoffice.urls", namespace="backoffice")),
     path("", include(("apps.catalog.urls", "catalog"), namespace="catalog")),
     path("", include(("apps.orders.urls", "orders"), namespace="orders")),
     path("", home, name="home"),  # می‌تونی اینو بالا/پایین نگه داری

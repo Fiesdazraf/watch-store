@@ -1,0 +1,26 @@
+<!-- templates/backoffice/dashboard.html -->
+{% extends "base.html" %}
+{% block title %}داشبورد مدیریت{% endblock %}
+{% block content %}
+<section class="section">
+  <div class="container">
+    <h1 class="title is-4">داشبورد مدیریت</h1>
+    <div class="columns">
+      <div class="column">
+        <div class="box">
+          <p><strong>Orders Today:</strong> {{ kpis.orders_today }}</p>
+          <p><strong>Revenue Today:</strong> {{ kpis.revenue_today }}</p>
+        </div>
+      </div>
+      <div class="column">
+        <div class="box">
+          <p><strong>Orders 30d:</strong> {{ kpis.orders_30d }}</p>
+          <p><strong>Revenue 30d:</strong> {{ kpis.revenue_30d }}</p>
+          <p><strong>AOV 30d:</strong> {{ kpis.avg_order_value_30d }}</p>
+        </div>
+      </div>
+    </div>
+    <p class="has-text-grey">API endpoints for charts: <code>/backoffice/api/kpis/</code>, <code>/backoffice/api/sales/</code></p>
+  </div>
+</section>
+{% endblock %}

@@ -43,9 +43,10 @@ USE_TZ = True
 INSTALLED_APPS = [
     "apps.catalog",
     "apps.customers",
-    "apps.orders",
+    "apps.orders.apps.OrdersConfig",
     "apps.accounts",
     "apps.payments",
+    "apps.backoffice",
     "apps.core",
     "django.contrib.admin",
     "django.contrib.auth",
