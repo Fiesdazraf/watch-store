@@ -1,26 +1,190 @@
-<!-- templates/backoffice/dashboard.html -->
-{% extends "base.html" %}
-{% block title %}داشبورد مدیریت{% endblock %}
+{# templates/backoffice/dashboard.html #}
+{% extends "backoffice/base.html" %}
+{% load humanize %}
+{% block title %}Dashboard{% endblock %}
+
 {% block content %}
-<section class="section">
-  <div class="container">
-    <h1 class="title is-4">داشبورد مدیریت</h1>
-    <div class="columns">
-      <div class="column">
-        <div class="box">
-          <p><strong>Orders Today:</strong> {{ kpis.orders_today }}</p>
-          <p><strong>Revenue Today:</strong> {{ kpis.revenue_today }}</p>
-        </div>
+
+  <!-- KPIs (اختیاری: اگر API جدا داری می‌تونی اینجا رندر کنی یا بعداً اضافه کنیم) -->
+
+  <!-- Recent Orders -->
+  <div class="box mt-5">
+    <div class="level">
+      <div class="level-left">
+        <h2 class="title is-5 mb-0">Recent Orders</h2>
       </div>
-      <div class="column">
-        <div class="box">
-          <p><strong>Orders 30d:</strong> {{ kpis.orders_30d }}</p>
-          <p><strong>Revenue 30d:</strong> {{ kpis.revenue_30d }}</p>
-          <p><strong>AOV 30d:</strong> {{ kpis.avg_order_value_30d }}</p>
-        </div>
+      <div class="level-right">
+        <a class="button is-light is-small" href="{% url 'orders:list' %}">View all</a>
       </div>
     </div>
-    <p class="has-text-grey">API endpoints for charts: <code>/backoffice/api/kpis/</code>, <code>/backoffice/api/sales/</code></p>
+
+    <div class="table-container">
+      <table class="table is-fullwidth is-striped is-hoverable" aria-label="Recent orders">
+        <thead>
+          <tr>
+            <th>#</th>
+            <th>Customer</th>
+            <th>Items</th>
+            <th>Total</th>
+            <th>Status</th>
+            <th>Placed</th>
+            <th class="has-text-right">Actions</th>
+          </tr>
+        </thead>
+        <tbody>
+        {% for order in recent_orders %}
+          <tr id="order-row-{{ order.id }}">
+            <td><a href="{% url 'orders:detail' order.id %}">{{ order.number }}</a></td>
+            <td>
+              {% if order.user %}
+                {{ order.user.get_full_name|default:order.user.email }}
+              {% else %}
+                Guest
+              {% endif %}
+            </td>
+            <td>
+              {% for it in order.items.all|slice:":3" %}
+                <span class="tag is-light mb-1">{{ it.product.name|truncatechars:24 }}</span>
+              {% empty %}
+                <span class="has-text-grey">—</span>
+              {% endfor %}
+            </td>
+            <td>{{ order.grand_total|floatformat:2 }} {{ order.currency|default:"EUR" }}</td>
+            <td>
+              {% include "backoffice/partials/_order_status_badge.html" with status=order.status %}
+            </td>
+            <td>{{ order.placed_at|naturaltime }}</td>
+            <td class="has-text-right">
+              <!-- Change Status inline (POST -> set_status via AJAX) -->
+              <form class="inline-status-form" action="{% url 'backoffice:set_status' order.id %}" method="post" data-order-id="{{ order.id }}">
+                {% csrf_token %}
+                <div class="field has-addons is-inline-block">
+                  <p class="control">
+                    <span class="select is-small">
+                      <select name="status" aria-label="Change status">
+                        {% for key,label in order.STATUS_CHOICES %}
+                          <option value="{{ key }}" {% if key == order.status %}selected{% endif %}>{{ label }}</option>
+                        {% endfor %}
+                      </select>
+                    </span>
+                  </p>
+                  <p class="control">
+                    <button type="submit" class="button is-small is-primary">Set</button>
+                  </p>
+                </div>
+              </form>
+
+              <a class="button is-small is-white" href="{% url 'orders:detail' order.id %}">Details</a>
+            </td>
+          </tr>
+        {% empty %}
+          <tr><td colspan="7" class="has-text-centered has-text-grey">No recent orders.</td></tr>
+        {% endfor %}
+        </tbody>
+      </table>
+    </div>
   </div>
-</section>
+
+  <!-- Sales Chart -->
+  <div class="box mt-5">
+    <div class="level">
+      <div class="level-left">
+        <h2 class="title is-5 mb-0">Sales (Last 30 days)</h2>
+      </div>
+    </div>
+    <div style="height: 260px;">
+      <canvas id="salesChart"
+              role="img"
+              aria-label="Sales line chart"
+              data-sales-url="{% url 'backoffice:sales_api' %}"></canvas>
+    </div>
+    <p class="help">If the chart is empty, ensure Chart.js is loaded and the API returns labels &amp; datasets.</p>
+  </div>
+
+{% endblock %}
+
+{% block extra_js %}
+<script>
+// Auto-submit on change to reduce clicks
+document.querySelectorAll(".inline-status-form select[name='status']").forEach(function(sel){
+  sel.addEventListener("change", function(){
+    this.form.requestSubmit();
+  });
+});
+
+// Inline status change (POST to set_status) with small UX niceties
+document.querySelectorAll(".inline-status-form").forEach(function(form){
+  form.addEventListener("submit", async function(e){
+    e.preventDefault();
+    const orderId = form.dataset.orderId;
+    const url = form.getAttribute("action");
+    const formData = new FormData(form);
+
+    // Optional: prevent double submit
+    const btn = form.querySelector("button[type='submit']");
+    if (btn) btn.disabled = true;
+
+    try {
+      const resp = await fetch(url, {
+        method: "POST",
+        headers: { "X-Requested-With": "XMLHttpRequest" },
+        body: formData
+      });
+      if (!resp.ok) throw new Error("Request failed");
+
+      const data = await resp.json(); // expect: {ok: true, status: "paid", badge_html: "..."}
+      if (data.ok) {
+        // Swap badge
+        const row = document.getElementById(`order-row-${orderId}`);
+        const badgeCell = row.querySelector("td:nth-child(5)");
+        if (data.badge_html) {
+          badgeCell.innerHTML = data.badge_html;
+        }
+        // Optional highlight
+        row.classList.add("has-background-success-light");
+        setTimeout(()=>row.classList.remove("has-background-success-light"), 1200);
+      }
+    } catch (err) {
+      console.error(err);
+      alert("Failed to change status.");
+    } finally {
+      if (btn) btn.disabled = false;
+    }
+  });
+});
+
+// Sales chart hookup (Chart.js)
+(async function(){
+  const el = document.getElementById("salesChart");
+  if (!el || typeof Chart === "undefined") return;
+  const url = el.dataset.salesUrl;
+
+  try {
+    const resp = await fetch(url, { headers: { "X-Requested-With": "XMLHttpRequest" }});
+    if (!resp.ok) throw new Error("Chart API failed");
+    const payload = await resp.json();
+    // Expect payload: { labels: [...], datasets: [{ label: "...", data: [...]}] }
+    new Chart(el.getContext("2d"), {
+      type: "line",
+      data: {
+        labels: payload.labels || [],
+        datasets: (payload.datasets || []).map(ds => ({
+          ...ds,
+          tension: 0.35,
+          fill: false,
+          pointRadius: 2,
+        })),
+      },
+      options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        scales: { y: { beginAtZero: true } },
+        plugins: { legend: { display: true } }
+      }
+    });
+  } catch (e) {
+    console.error(e);
+  }
+})();
+</script>
 {% endblock %}

@@ -1,0 +1,14 @@
+{% comment %} expects: status {% endcomment %}
+{% if status == "paid" %}
+  <span class="tag is-success is-light">Paid</span>
+{% elif status == "pending" %}
+  <span class="tag is-warning is-light">Pending</span>
+{% elif status == "failed" %}
+  <span class="tag is-danger is-light">Failed</span>
+{% elif status == "shipped" %}
+  <span class="tag is-link is-light">Shipped</span>
+{% elif status == "cancelled" %}
+  <span class="tag is-dark is-light">Cancelled</span>
+{% else %}
+  <span class="tag is-light">{{ status|title }}</span>
+{% endif %}

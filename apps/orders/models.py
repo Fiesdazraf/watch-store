@@ -145,6 +145,27 @@ class OrderStatus(models.TextChoices):
     CANCELED = "canceled", "Canceled"
 
 
+class OrderStatusLog(models.Model):
+    order = models.ForeignKey("Order", related_name="status_logs", on_delete=models.CASCADE)
+    changed_by = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        null=True,
+        blank=True,
+        on_delete=models.SET_NULL,
+        related_name="order_status_changes",
+    )
+    from_status = models.CharField(max_length=32)
+    to_status = models.CharField(max_length=32)
+    note = models.CharField(max_length=255, blank=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ["-created_at"]
+
+    def __str__(self):
+        return f"Order#{self.order_id}: {self.from_status} → {self.to_status}"
+
+
 class PaymentMethod(models.TextChoices):
     COD = "cod", "Cash on Delivery"
     CARD = "card", "Credit/Debit Card"

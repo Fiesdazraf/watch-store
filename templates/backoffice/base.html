@@ -1,0 +1,134 @@
+{% load static %}
+<!doctype html>
+<html lang="fa" dir="rtl">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>{% block title %}پنل مدیریت | Watch Store{% endblock %}</title>
+
+  {# استایل اصلی بک‌آفیس: اگر Bulma سفارشی دارید همین را جایگزین کنید #}
+  <link rel="stylesheet" href="{% static 'shop/bulma.css' %}">
+  <style>
+    /* Backoffice light polish */
+    :root {
+      --bo-bg: #0f1220;
+      --bo-card: #171a2b;
+      --bo-text: #e9edf5;
+      --bo-muted: #9aa3b2;
+      --bo-primary: #c9a227; /* طلایی سبک */
+    }
+    body {
+      background: var(--bo-bg);
+      color: var(--bo-text);
+      min-height: 100vh;
+    }
+    .navbar, .box, .card {
+      background: var(--bo-card);
+      color: var(--bo-text);
+    }
+    .navbar .navbar-item, .navbar .navbar-link { color: var(--bo-text); }
+    .navbar.is-dark { background: #12162a; }
+    a, .has-text-link { color: var(--bo-primary) !important; }
+    .menu-label, .menu-list a { color: var(--bo-muted); }
+    .menu-list a.is-active { background: rgba(201,162,39,0.12); color: var(--bo-text); }
+    .tag.is-light { background: rgba(255,255,255,.08); color: var(--bo-text); border: 1px solid rgba(255,255,255,.06); }
+    .table tr:hover { background: rgba(255,255,255,.03); }
+    .toast {
+      position: fixed; inset-inline-start: 1rem; inset-block-start: 1rem; z-index: 50;
+    }
+  </style>
+
+  {% block extra_css %}{% endblock %}
+</head>
+<body>
+
+  <!-- Top navbar -->
+  <nav class="navbar is-dark" role="navigation" aria-label="main navigation">
+    <div class="navbar-brand">
+      <a class="navbar-item" href="{% url 'backoffice:dashboard' %}">
+        <strong>Backoffice</strong>&nbsp;<span class="has-text-grey-light">/ Watch Store</span>
+      </a>
+      <a role="button" class="navbar-burger" aria-label="menu" aria-expanded="false" data-target="boNav">
+        <span aria-hidden="true"></span><span aria-hidden="true"></span><span aria-hidden="true"></span>
+      </a>
+    </div>
+
+    <div id="boNav" class="navbar-menu">
+      <div class="navbar-start">
+        <a class="navbar-item" href="{% url 'backoffice:dashboard' %}">داشبورد</a>
+        {# اگر مسیر دارید نگه دارید، اگر ندارید حذف کنید #}
+        <a class="navbar-item" href="{% url 'orders:list' %}">سفارش‌ها</a>
+        {% comment %}<a class="navbar-item" href="{% url 'catalog:product_list' %}">محصولات</a>{% endcomment %}
+      </div>
+      <div class="navbar-end">
+        <div class="navbar-item">
+          <div class="buttons">
+            {# اگر auth دارید: نام کاربر #}
+            {% if request.user.is_authenticated %}
+              <span class="tag is-light is-medium">{{ request.user.get_full_name|default:request.user.username }}</span>
+              {# مسیر خروج خودتان را جایگزین کنید #}
+              <a class="button is-small is-light" href="{% url 'accounts:logout' %}">خروج</a>
+            {% endif %}
+          </div>
+        </div>
+      </div>
+    </div>
+  </nav>
+
+  <section class="section">
+    <div class="container is-fluid">
+      <div class="columns">
+        <!-- Sidebar -->
+        <aside class="column is-2">
+          <p class="menu-label">ناوبری</p>
+          <ul class="menu-list">
+            <li><a class="{% if request.resolver_match.url_name == 'dashboard' %}is-active{% endif %}" href="{% url 'backoffice:dashboard' %}">داشبورد</a></li>
+            <li><a href="{% url 'orders:list' %}">سفارش‌ها</a></li>
+            {# <li><a href="{% url 'catalog:product_list' %}">محصولات</a></li> #}
+            {# <li><a href="{% url 'customers:list' %}">مشتریان</a></li> #}
+          </ul>
+        </aside>
+
+        <!-- Main -->
+        <main class="column is-10">
+          <!-- Django messages -->
+          {% if messages %}
+          <div class="toast">
+            {% for message in messages %}
+              <div class="notification is-{{ message.tags|default:'info' }} mb-2">
+                <button class="delete" onclick="this.parentElement.remove()"></button>
+                {{ message }}
+              </div>
+            {% endfor %}
+          </div>
+          {% endif %}
+
+          {% block content %}{% endblock %}
+        </main>
+      </div>
+    </div>
+  </section>
+
+  <!-- Scripts -->
+  <script>
+    // Navbar burger (mobile)
+    document.addEventListener('DOMContentLoaded', () => {
+      const $burgers = Array.prototype.slice.call(document.querySelectorAll('.navbar-burger'), 0);
+      $burgers.forEach(el => {
+        el.addEventListener('click', () => {
+          const target = el.dataset.target;
+          const $target = document.getElementById(target);
+          el.classList.toggle('is-active');
+          $target.classList.toggle('is-active');
+          document.body.classList.toggle('is-clipped');
+        });
+      });
+    });
+  </script>
+
+  {# اگر در backoffice نمودار دارید #}
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.4/dist/chart.umd.min.js" defer></script>
+
+  {% block extra_js %}{% endblock %}
+</body>
+</html>

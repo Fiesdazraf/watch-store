@@ -1,0 +1,194 @@
+{# templates/backoffice/order_detail.html #}
+{% extends "backoffice/base.html" %}
+{% load humanize %}
+{% block title %}جزئیات سفارش {{ order.number }} | Backoffice{% endblock %}
+
+{% block content %}
+<div class="box">
+  <div class="level">
+    <div class="level-left">
+      <h1 class="title is-5 mb-0">سفارش #{{ order.number }}</h1>
+      <span class="ml-3">{% include "backoffice/partials/_order_status_badge.html" with status=order.status %}</span>
+    </div>
+    <div class="level-right">
+      <a class="button is-light is-small" href="{% url 'orders:list' %}">بازگشت به سفارش‌ها</a>
+    </div>
+  </div>
+
+  <!-- Change Status (AJAX or redirect) -->
+  <form class="inline-status-form" action="{% url 'backoffice:set_status' order.id %}" method="post" data-order-id="{{ order.id }}">
+    {% csrf_token %}
+    <div class="field has-addons">
+      <p class="control">
+        <span class="select is-small">
+          <select name="status">
+            {% for key,label in order.STATUS_CHOICES %}
+              <option value="{{ key }}" {% if key == order.status %}selected{% endif %}>{{ label }}</option>
+            {% endfor %}
+          </select>
+        </span>
+      </p>
+      <p class="control">
+        <button type="submit" class="button is-small is-primary">اعمال وضعیت</button>
+      </p>
+    </div>
+  </form>
+</div>
+
+<div class="columns is-variable is-5">
+  <!-- Left: Customer & Addresses -->
+  <div class="column is-5">
+    <div class="box">
+      <h2 class="title is-6">مشتری</h2>
+      {% if order.user %}
+        <p><strong>نام:</strong> {{ order.user.get_full_name|default:order.user.username }}</p>
+        <p><strong>ایمیل:</strong> {{ order.user.email }}</p>
+      {% else %}
+        <p>مهمان</p>
+      {% endif %}
+      <hr>
+      <h3 class="title is-6">آدرس‌ها</h3>
+      <div class="columns">
+        <div class="column">
+          <p class="has-text-weight-semibold">صورتحساب</p>
+          <p class="is-size-7">{{ order.billing_address|default:"—" }}</p>
+        </div>
+        <div class="column">
+          <p class="has-text-weight-semibold">ارسال</p>
+          <p class="is-size-7">{{ order.shipping_address|default:"—" }}</p>
+        </div>
+      </div>
+    </div>
+
+    {% if order.status_logs.all %}
+    <div class="box">
+      <h2 class="title is-6">تاریخچه وضعیت</h2>
+      <table class="table is-fullwidth is-narrow">
+        <thead>
+          <tr>
+            <th>زمان</th>
+            <th>کاربر</th>
+            <th>از</th>
+            <th>به</th>
+            <th>یادداشت</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for log in order.status_logs.all %}
+          <tr>
+            <td>{{ log.created_at|date:"Y-m-d H:i" }}</td>
+            <td>{{ log.changed_by|get_full_name|default:log.changed_by|default:"—" }}</td>
+            <td>{{ log.from_status }}</td>
+            <td>{{ log.to_status }}</td>
+            <td>{{ log.note|default:"" }}</td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+    {% endif %}
+  </div>
+
+  <!-- Right: Items & Totals -->
+  <div class="column is-7">
+    <div class="box">
+      <h2 class="title is-6">اقلام سفارش</h2>
+      <div class="table-container">
+        <table class="table is-fullwidth is-striped is-hoverable">
+          <thead>
+            <tr>
+              <th>محصول</th>
+              <th class="has-text-centered">تعداد</th>
+              <th class="has-text-right">قیمت واحد</th>
+              <th class="has-text-right">جمع خط</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for it in order.items.all %}
+            <tr>
+              <td>
+                {{ it.product.name }}
+                {% if it.variant %}<span class="tag is-light is-rounded is-size-7">Variant: {{ it.variant.sku|default:it.variant.id }}</span>{% endif %}
+              </td>
+              <td class="has-text-centered">{{ it.quantity }}</td>
+              <td class="has-text-right">{{ it.unit_price|floatformat:2 }} {{ order.currency|default:"EUR" }}</td>
+              <td class="has-text-right">{{ it.line_total|floatformat:2 }} {{ order.currency|default:"EUR" }}</td>
+            </tr>
+            {% empty %}
+            <tr><td colspan="4" class="has-text-centered has-text-grey">آیتمی ثبت نشده.</td></tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+
+      <div class="columns">
+        <div class="column is-offset-6 is-6">
+          <table class="table is-fullwidth is-narrow">
+            <tbody>
+              <tr>
+                <th>Subtotal</th>
+                <td class="has-text-right">{{ order.subtotal|floatformat:2 }} {{ order.currency|default:"EUR" }}</td>
+              </tr>
+              {% if order.discount_total %}
+              <tr>
+                <th>Discount</th>
+                <td class="has-text-right">- {{ order.discount_total|floatformat:2 }} {{ order.currency|default:"EUR" }}</td>
+              </tr>
+              {% endif %}
+              {% if order.tax_total %}
+              <tr>
+                <th>Tax</th>
+                <td class="has-text-right">{{ order.tax_total|floatformat:2 }} {{ order.currency|default:"EUR" }}</td>
+              </tr>
+              {% endif %}
+              {% if order.shipping_total %}
+              <tr>
+                <th>Shipping</th>
+                <td class="has-text-right">{{ order.shipping_total|floatformat:2 }} {{ order.currency|default:"EUR" }}</td>
+              </tr>
+              {% endif %}
+              <tr>
+                <th>Total</th>
+                <td class="has-text-right"><strong>{{ order.grand_total|floatformat:2 }} {{ order.currency|default:"EUR" }}</strong></td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+    </div>
+  </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+  // اگر می‌خواهی با تغییر select بدون کلیک دکمه submit شود:
+  (function(){
+    const form = document.querySelector(".inline-status-form");
+    if (!form) return;
+    const select = form.querySelector("select[name='status']");
+    if (select) {
+      select.addEventListener("change", () => form.requestSubmit());
+    }
+    form.addEventListener("submit", async function(e){
+      e.preventDefault();
+      const url = form.getAttribute("action");
+      const data = new FormData(form);
+      try {
+        const res = await fetch(url, { method: "POST", headers: {"X-Requested-With":"XMLHttpRequest"}, body: data });
+        if (!res.ok) throw new Error("Bad response");
+        const payload = await res.json();
+        if (payload.ok && payload.badge_html) {
+          // جایگزینی badge بالا
+          const badgeHolder = document.querySelector(".title + span");
+          if (badgeHolder) badgeHolder.innerHTML = payload.badge_html;
+        }
+      } catch (err) {
+        console.error(err);
+        alert("تغییر وضعیت با خطا مواجه شد.");
+      }
+    });
+  })();
+</script>
+{% endblock %}
