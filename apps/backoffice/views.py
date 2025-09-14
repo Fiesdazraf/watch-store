@@ -1,6 +1,7 @@
 # apps/backoffice/views.py
 from django.contrib import messages
 from django.contrib.admin.views.decorators import staff_member_required
+from django.core.exceptions import FieldDoesNotExist
 from django.db.models import Prefetch
 from django.http import HttpRequest, HttpResponse, HttpResponseBadRequest, JsonResponse
 from django.shortcuts import get_object_or_404, redirect, render
@@ -22,7 +23,7 @@ def health(_: HttpRequest) -> HttpResponse:
 def dashboard_view(request: HttpRequest) -> HttpResponse:
     # ❗️ NOTE: Prefetch با slicing مجاز نیست؛ پس بدون [:3] بگذار و توی تمپلیت slice کن.
     recent_orders = (
-        Order.objects.select_related("user")
+        Order.objects.select_related("customer", "customer__user")
         .prefetch_related(Prefetch("items", queryset=OrderItem.objects.select_related("product")))
         .order_by("-placed_at")[:10]
     )
@@ -43,26 +44,72 @@ def kpis_api(request: HttpRequest) -> JsonResponse:
     return JsonResponse(kpis())
 
 
-@staff_required
+def _detect_key(d: dict, candidates: tuple[str, ...], default: str | None = None) -> str | None:
+    for k in candidates:
+        if k in d:
+            return k
+    return default
+
+
+@staff_member_required
 def sales_api(request: HttpRequest) -> JsonResponse:
     """
-    Return Chart.js-friendly payload:
-      {
-        "labels": [...],
-        "datasets": [
-          {"label": "Revenue (€)", "data": [...]},
-          {"label": "Orders", "data": [...]}
-        ]
-      }
+    Returns Chart.js-friendly payload:
+    {
+      "labels": [...],
+      "datasets": [
+        {"label": "Revenue (€)", "data": [...]},
+        {"label": "Orders", "data": [...]}
+      ]
+    }
     """
     days = int(request.GET.get("days", 30))
-    # Assumption: daily_sales(days) -> list of dicts like:
-    # [{"date": "YYYY-MM-DD", "revenue": float, "orders": int}, ...]
-    series = daily_sales(days)
+    series = daily_sales(days)  # ممکن است کلیدهای متفاوتی داشته باشد
 
-    labels = [row["date"] for row in series]
-    revenue_data = [row.get("revenue", 0) for row in series]
-    orders_data = [row.get("orders", 0) for row in series]
+    # اگر خالی بود، خروجی خالی اما معتبر بده
+    if not series:
+        return JsonResponse(
+            {
+                "labels": [],
+                "datasets": [
+                    {"label": "Revenue (€)", "data": []},
+                    {"label": "Orders", "data": []},
+                ],
+            }
+        )
+
+    first = series[0] if isinstance(series, list) else {}
+    # تشخیص داینامیک کلیدها (date/day/label) و (revenue/total/amount) و (orders/count/order_count)
+    date_key = _detect_key(first, ("date", "day", "label"))
+    revenue_key = _detect_key(first, ("revenue", "total", "amount", "sum"))
+    orders_key = _detect_key(first, ("orders", "count", "order_count"))
+
+    # ساخت labels و datasets با محافظه‌کاری (بدون KeyError)
+    labels = []
+    revenue_data = []
+    orders_data = []
+
+    for row in series:
+        # تاریخ/برچسب
+        labels.append(str(row.get(date_key, "")) if date_key else "")
+        # درآمد
+        revenue_val = row.get(revenue_key, 0) if revenue_key else 0
+        try:
+            revenue_val = float(revenue_val)
+        except Exception:
+            revenue_val = 0.0
+        revenue_data.append(revenue_val)
+        # تعداد سفارش
+        orders_val = row.get(orders_key, 0) if orders_key else 0
+        try:
+            orders_val = int(orders_val)
+        except Exception:
+            # اگر عدد اعشاری بود یا رشته، به int امن تبدیل کن
+            try:
+                orders_val = int(float(orders_val))
+            except Exception:
+                orders_val = 0
+        orders_data.append(orders_val)
 
     payload = {
         "labels": labels,
@@ -81,51 +128,106 @@ def sales_api(request: HttpRequest) -> JsonResponse:
 def set_status_redirect_view(request: HttpRequest, order_id: int):
     order = get_object_or_404(Order, pk=order_id)
     new_status = request.POST.get("status")
+    if not new_status:
+        messages.error(request, "Missing status")
+        return redirect("backoffice:dashboard")
 
-    # اگر Order.STATUS_CHOICES دارید:
-    if new_status not in dict(order.STATUS_CHOICES):
+    allowed = _allowed_status_values(order)
+    if allowed and new_status not in allowed:
         messages.error(request, "Invalid status")
         return redirect("backoffice:dashboard")
 
-    prev = order.status
+    prev = getattr(order, "status", None)
     if prev != new_status:
-        order.status = new_status
+        order.status = new_status  # type: ignore[attr-defined]
         order.save(update_fields=["status"])
-        OrderStatusLog.objects.create(
-            order=order,
-            changed_by=request.user if request.user.is_authenticated else None,
-            from_status=prev,
-            to_status=new_status,
-        )
+        try:
+            OrderStatusLog.objects.create(
+                order=order,
+                changed_by=request.user if request.user.is_authenticated else None,
+                from_status=prev or "",
+                to_status=new_status,
+            )
+        except Exception:
+            pass
 
-    messages.success(request, f"Order {order.number} status → {new_status}")
+    messages.success(request, f"Order {getattr(order, 'number', order.pk)} status → {new_status}")
     return redirect("backoffice:dashboard")
 
 
-# 2) حالت AJAX (JSON) برای اینلاین در جدول
+def _allowed_status_values(order: Order) -> list:
+    """
+    اول از choices خود فیلد status استفاده می‌کنیم.
+    اگر نبود، از Enum داخلی Order.Status.
+    در نهایت اگر STATUS_CHOICES قدیمی وجود داشت از آن.
+    اگر هیچ‌کدام نبود، لیست خالی یعنی محدودیت صریحی نداریم.
+    """
+    # 1) choices روی فیلد
+    try:
+        field = order._meta.get_field("status")
+        if getattr(field, "choices", None):
+            return [c[0] for c in field.choices]
+    except FieldDoesNotExist:
+        pass
+
+    # 2) Enum داخلی
+    StatusEnum = getattr(order.__class__, "Status", None)
+    if StatusEnum is not None:
+        vals = []
+        for name in dir(StatusEnum):
+            if name.startswith("_"):
+                continue
+            val = getattr(StatusEnum, name)
+            if isinstance(val, (str, int)):
+                vals.append(val)
+        if vals:
+            return vals
+
+    # 3) الگوی قدیمی
+    if hasattr(order, "STATUS_CHOICES"):
+        try:
+            return [c[0] for c in order.STATUS_CHOICES]  # type: ignore[attr-defined]
+        except Exception:
+            pass
+
+    # 4) بدون محدودیت صریح
+    return []
+
+
 @staff_member_required
 @require_POST
 def set_status_view(request: HttpRequest, order_id: int) -> JsonResponse:
     order = get_object_or_404(Order, pk=order_id)
     new_status = request.POST.get("status")
 
-    if new_status not in dict(order.STATUS_CHOICES):
+    if new_status is None:
+        return HttpResponseBadRequest("missing status")
+
+    allowed = _allowed_status_values(order)
+    # اگر allowed خالی نبود، اعتبارسنجی کن؛ اگر خالی بود یعنی آزادی عمل داریم
+    if allowed and new_status not in allowed:
         return HttpResponseBadRequest("invalid status")
 
-    prev = order.status
+    prev = getattr(order, "status", None)
     if prev != new_status:
-        order.status = new_status
+        order.status = new_status  # type: ignore[attr-defined]
         order.save(update_fields=["status"])
-        OrderStatusLog.objects.create(
-            order=order,
-            changed_by=request.user if request.user.is_authenticated else None,
-            from_status=prev,
-            to_status=new_status,
-        )
+        try:
+            OrderStatusLog.objects.create(
+                order=order,
+                changed_by=request.user if request.user.is_authenticated else None,
+                from_status=prev or "",
+                to_status=new_status,
+            )
+        except Exception:
+            # اگر مدل لاگ نداری یا اختیاریه، جلوی خطا را می‌گیریم تا جریان UI نشکند
+            pass
 
     badge_html = render_to_string(
         "backoffice/partials/_order_status_badge.html",
-        {"status": order.status},
+        {"status": getattr(order, "status", new_status)},
         request=request,
     )
-    return JsonResponse({"ok": True, "status": order.status, "badge_html": badge_html})
+    return JsonResponse(
+        {"ok": True, "status": getattr(order, "status", new_status), "badge_html": badge_html}
+    )

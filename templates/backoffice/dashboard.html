@@ -5,7 +5,7 @@
 
 {% block content %}
 
-  <!-- KPIs (اختیاری: اگر API جدا داری می‌تونی اینجا رندر کنی یا بعداً اضافه کنیم) -->
+  <!-- KPIs (اختیاری) -->
 
   <!-- Recent Orders -->
   <div class="box mt-5">
@@ -35,13 +35,16 @@
         {% for order in recent_orders %}
           <tr id="order-row-{{ order.id }}">
             <td><a href="{% url 'orders:detail' order.id %}">{{ order.number }}</a></td>
+
+            {# 👇 همراستا با customer.user #}
             <td>
-              {% if order.user %}
-                {{ order.user.get_full_name|default:order.user.email }}
+              {% if order.customer and order.customer.user %}
+                {{ order.customer.user.get_full_name|default:order.customer.user.email }}
               {% else %}
                 Guest
               {% endif %}
             </td>
+
             <td>
               {% for it in order.items.all|slice:":3" %}
                 <span class="tag is-light mb-1">{{ it.product.name|truncatechars:24 }}</span>
@@ -49,22 +52,41 @@
                 <span class="has-text-grey">—</span>
               {% endfor %}
             </td>
+
             <td>{{ order.grand_total|floatformat:2 }} {{ order.currency|default:"EUR" }}</td>
+
             <td>
               {% include "backoffice/partials/_order_status_badge.html" with status=order.status %}
             </td>
+
             <td>{{ order.placed_at|naturaltime }}</td>
+
             <td class="has-text-right">
               <!-- Change Status inline (POST -> set_status via AJAX) -->
-              <form class="inline-status-form" action="{% url 'backoffice:set_status' order.id %}" method="post" data-order-id="{{ order.id }}">
+              <form class="inline-status-form"
+                    action="{% url 'backoffice:set_status' order.id %}"
+                    method="post"
+                    data-order-id="{{ order.id }}">
                 {% csrf_token %}
                 <div class="field has-addons is-inline-block">
                   <p class="control">
                     <span class="select is-small">
                       <select name="status" aria-label="Change status">
-                        {% for key,label in order.STATUS_CHOICES %}
-                          <option value="{{ key }}" {% if key == order.status %}selected{% endif %}>{{ label }}</option>
-                        {% endfor %}
+                        {# اگر STATUS_CHOICES در مدل بود، از خودش استفاده کن #}
+                        {% if order.STATUS_CHOICES %}
+                          {% for key,label in order.STATUS_CHOICES %}
+                            <option value="{{ key }}" {% if key == order.status %}selected{% endif %}>{{ label }}</option>
+                          {% endfor %}
+                        {% else %}
+                          {# در غیر این صورت یک fallback رایج و بی‌خطر #}
+                          {% with fallback_statuses="pending,paid,processing,shipped,delivered,canceled"|split:"," %}
+                            {% for key in fallback_statuses %}
+                              <option value="{{ key }}" {% if key == order.status %}selected{% endif %}>
+                                {{ key|capfirst }}
+                              </option>
+                            {% endfor %}
+                          {% endwith %}
+                        {% endif %}
                       </select>
                     </span>
                   </p>
@@ -120,7 +142,6 @@ document.querySelectorAll(".inline-status-form").forEach(function(form){
     const url = form.getAttribute("action");
     const formData = new FormData(form);
 
-    // Optional: prevent double submit
     const btn = form.querySelector("button[type='submit']");
     if (btn) btn.disabled = true;
 
@@ -132,15 +153,13 @@ document.querySelectorAll(".inline-status-form").forEach(function(form){
       });
       if (!resp.ok) throw new Error("Request failed");
 
-      const data = await resp.json(); // expect: {ok: true, status: "paid", badge_html: "..."}
+      const data = await resp.json(); // {ok: true, status: "...", badge_html: "..."}
       if (data.ok) {
-        // Swap badge
         const row = document.getElementById(`order-row-${orderId}`);
         const badgeCell = row.querySelector("td:nth-child(5)");
         if (data.badge_html) {
           badgeCell.innerHTML = data.badge_html;
         }
-        // Optional highlight
         row.classList.add("has-background-success-light");
         setTimeout(()=>row.classList.remove("has-background-success-light"), 1200);
       }
@@ -163,7 +182,7 @@ document.querySelectorAll(".inline-status-form").forEach(function(form){
     const resp = await fetch(url, { headers: { "X-Requested-With": "XMLHttpRequest" }});
     if (!resp.ok) throw new Error("Chart API failed");
     const payload = await resp.json();
-    // Expect payload: { labels: [...], datasets: [{ label: "...", data: [...]}] }
+
     new Chart(el.getContext("2d"), {
       type: "line",
       data: {
