@@ -1,14 +1,12 @@
-{% comment %} expects: status {% endcomment %}
-{% if status == "paid" %}
-  <span class="tag is-success is-light">Paid</span>
-{% elif status == "pending" %}
-  <span class="tag is-warning is-light">Pending</span>
-{% elif status == "failed" %}
-  <span class="tag is-danger is-light">Failed</span>
-{% elif status == "shipped" %}
-  <span class="tag is-link is-light">Shipped</span>
-{% elif status == "cancelled" %}
-  <span class="tag is-dark is-light">Cancelled</span>
-{% else %}
-  <span class="tag is-light">{{ status|title }}</span>
-{% endif %}
+{# templates/backoffice/partials/_order_status_badge.html #}
+{% with s=status|stringformat:"s" %}
+  {% if s in "paid,completed,fulfilled" %}
+    <span class="tag is-success">{{ s }}</span>
+  {% elif s in "pending,awaiting_payment,processing" %}
+    <span class="tag is-warning">{{ s }}</span>
+  {% elif s in "cancelled,canceled,refunded" %}
+    <span class="tag is-danger">{{ s }}</span>
+  {% else %}
+    <span class="tag is-light">{{ s }}</span>
+  {% endif %}
+{% endwith %}

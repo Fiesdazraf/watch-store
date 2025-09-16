@@ -1,5 +1,6 @@
 # tests/backoffice/test_backoffice_sales_api.py
-from datetime import date, timedelta
+import json
+from datetime import timedelta
 from decimal import Decimal
 
 import pytest
@@ -12,7 +13,7 @@ from apps.orders.models import Order, OrderStatus
 
 
 def _build_instance_kwargs(model, owner_user=None, owner_customer=None):
-    """پر کردن حداقلی NOT NULLهای مدل آدرس، بدون فرض خاص."""
+    """Fill minimal NOT NULL fields for address-like models, without hard assumptions."""
     kwargs = {}
     for f in model._meta.get_fields():
         if not isinstance(f, djm.Field) or f.auto_created:
@@ -49,9 +50,10 @@ def test_sales_api_returns_labels_and_datasets(client, django_user_model):
     )
     client.force_login(staff)
 
+    # Customer
     customer, _ = Customer.objects.get_or_create(user=staff)
 
-    # مدل آدرسِ مرتبط با Order را داینامیک بگیر
+    # Address model & instance (via Order.shipping_address FK)
     shipping_field = Order._meta.get_field("shipping_address")
     ShippingAddressModel = shipping_field.remote_field.model
     addr_kwargs = _build_instance_kwargs(
@@ -59,17 +61,19 @@ def test_sales_api_returns_labels_and_datasets(client, django_user_model):
     )
     shipping_address = ShippingAddressModel.objects.create(**addr_kwargs)
 
-    # 👇 حتماً با attname ست کن (مثل shipping_address_id)
-    today = date.today()
-    for i in range(3):
+    # Create 3 paid orders in the last 3 days with grand_total > 0
+    now = timezone.now()
+    amounts = [Decimal("100.00"), Decimal("200.00"), Decimal("300.00")]
+    for i, amount in enumerate(amounts):
         Order.objects.create(
             customer=customer,
-            **{shipping_field.attname: shipping_address.pk},  # <<< این خط کلید مشکل بود
+            **{shipping_field.attname: shipping_address.pk},  # FK via attname
             status=OrderStatus.PAID,
             payment_method="gateway",
-            discount_total=0,
-            shipping_cost=0,
-            placed_at=today - timedelta(days=i),
+            discount_total=Decimal("0.00"),
+            shipping_cost=Decimal("0.00"),
+            placed_at=now - timedelta(days=i),
+            grand_total=amount,  # IMPORTANT for revenue series
         )
 
     url = reverse("backoffice:sales_api")
@@ -81,3 +85,38 @@ def test_sales_api_returns_labels_and_datasets(client, django_user_model):
     assert "datasets" in data and isinstance(data["datasets"], list)
     for ds in data["datasets"]:
         assert "label" in ds and "data" in ds and isinstance(ds["data"], list)
+    # Should not be all empty because we created 3 orders
+    assert any(ds["data"] for ds in data["datasets"])
+
+
+@pytest.mark.django_db
+def test_sales_api_smoke(client, admin_user):
+    client.force_login(admin_user)
+
+    # minimal customer + shipping address (Order.customer is NOT NULL)
+    customer, _ = Customer.objects.get_or_create(user=admin_user)
+
+    shipping_field = Order._meta.get_field("shipping_address")
+    ShippingAddressModel = shipping_field.remote_field.model
+    addr_kwargs = _build_instance_kwargs(
+        ShippingAddressModel, owner_user=admin_user, owner_customer=customer
+    )
+    shipping_address = ShippingAddressModel.objects.create(**addr_kwargs)
+
+    now = timezone.now()
+    Order.objects.create(
+        customer=customer,
+        **{shipping_field.attname: shipping_address.pk},
+        status=OrderStatus.PAID,
+        placed_at=now,
+        grand_total=Decimal("100.00"),
+        payment_method="gateway",
+        discount_total=Decimal("0.00"),
+        shipping_cost=Decimal("0.00"),
+    )
+
+    url = reverse("backoffice:sales_api") + "?days=7"
+    resp = client.get(url)
+    assert resp.status_code == 200
+    payload = json.loads(resp.content)
+    assert "labels" in payload and "datasets" in payload

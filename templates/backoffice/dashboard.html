@@ -2,139 +2,184 @@
 {% extends "backoffice/base.html" %}
 {% load humanize %}
 {% block title %}Dashboard{% endblock %}
-
 {% block content %}
 
-  <!-- KPIs (اختیاری) -->
-
-  <!-- Recent Orders -->
-  <div class="box mt-5">
-    <div class="level">
-      <div class="level-left">
-        <h2 class="title is-5 mb-0">Recent Orders</h2>
-      </div>
-      <div class="level-right">
-        <a class="button is-light is-small" href="{% url 'orders:list' %}">View all</a>
-      </div>
+<div class="columns is-multiline">
+  <div class="column is-one-third">
+    <div class="box has-text-centered">
+      <p class="heading">Sales Today</p>
+      <p class="title is-4">{{ sales_kpis.today|floatformat:0|intcomma }}</p>
     </div>
-
-    <div class="table-container">
-      <table class="table is-fullwidth is-striped is-hoverable" aria-label="Recent orders">
-        <thead>
-          <tr>
-            <th>#</th>
-            <th>Customer</th>
-            <th>Items</th>
-            <th>Total</th>
-            <th>Status</th>
-            <th>Placed</th>
-            <th class="has-text-right">Actions</th>
-          </tr>
-        </thead>
-        <tbody>
-        {% for order in recent_orders %}
-          <tr id="order-row-{{ order.id }}">
-            <td><a href="{% url 'orders:detail' order.id %}">{{ order.number }}</a></td>
-
-            {# 👇 همراستا با customer.user #}
-            <td>
-              {% if order.customer and order.customer.user %}
-                {{ order.customer.user.get_full_name|default:order.customer.user.email }}
-              {% else %}
-                Guest
-              {% endif %}
-            </td>
-
-            <td>
-              {% for it in order.items.all|slice:":3" %}
-                <span class="tag is-light mb-1">{{ it.product.name|truncatechars:24 }}</span>
-              {% empty %}
-                <span class="has-text-grey">—</span>
-              {% endfor %}
-            </td>
-
-            <td>{{ order.grand_total|floatformat:2 }} {{ order.currency|default:"EUR" }}</td>
-
-            <td>
-              {% include "backoffice/partials/_order_status_badge.html" with status=order.status %}
-            </td>
-
-            <td>{{ order.placed_at|naturaltime }}</td>
-
-            <td class="has-text-right">
-              <!-- Change Status inline (POST -> set_status via AJAX) -->
-              <form class="inline-status-form"
-                    action="{% url 'backoffice:set_status' order.id %}"
-                    method="post"
-                    data-order-id="{{ order.id }}">
-                {% csrf_token %}
-                <div class="field has-addons is-inline-block">
-                  <p class="control">
-                    <span class="select is-small">
-                      <select name="status" aria-label="Change status">
-                        {# اگر STATUS_CHOICES در مدل بود، از خودش استفاده کن #}
-                        {% if order.STATUS_CHOICES %}
-                          {% for key,label in order.STATUS_CHOICES %}
-                            <option value="{{ key }}" {% if key == order.status %}selected{% endif %}>{{ label }}</option>
-                          {% endfor %}
-                        {% else %}
-                          {# در غیر این صورت یک fallback رایج و بی‌خطر #}
-                          {% with fallback_statuses="pending,paid,processing,shipped,delivered,canceled"|split:"," %}
-                            {% for key in fallback_statuses %}
-                              <option value="{{ key }}" {% if key == order.status %}selected{% endif %}>
-                                {{ key|capfirst }}
-                              </option>
-                            {% endfor %}
-                          {% endwith %}
-                        {% endif %}
-                      </select>
-                    </span>
-                  </p>
-                  <p class="control">
-                    <button type="submit" class="button is-small is-primary">Set</button>
-                  </p>
-                </div>
-              </form>
-
-              <a class="button is-small is-white" href="{% url 'orders:detail' order.id %}">Details</a>
-            </td>
-          </tr>
-        {% empty %}
-          <tr><td colspan="7" class="has-text-centered has-text-grey">No recent orders.</td></tr>
-        {% endfor %}
-        </tbody>
-      </table>
+  </div>
+  <div class="column is-one-third">
+    <div class="box has-text-centered">
+      <p class="heading">Sales This Week</p>
+      <p class="title is-4">{{ sales_kpis.week|floatformat:0|intcomma }}</p>
+    </div>
+  </div>
+  <div class="column is-one-third">
+    <div class="box has-text-centered">
+      <p class="heading">Sales This Month</p>
+      <p class="title is-4">{{ sales_kpis.month|floatformat:0|intcomma }}</p>
     </div>
   </div>
 
-  <!-- Sales Chart -->
-  <div class="box mt-5">
-    <div class="level">
-      <div class="level-left">
-        <h2 class="title is-5 mb-0">Sales (Last 30 days)</h2>
-      </div>
+  <div class="column is-one-third">
+    <div class="box has-text-centered">
+      <p class="heading">Orders Pending</p>
+      <p class="title is-4">{{ orders_counters.pending }}</p>
     </div>
-    <div style="height: 260px;">
-      <canvas id="salesChart"
-              role="img"
-              aria-label="Sales line chart"
-              data-sales-url="{% url 'backoffice:sales_api' %}"></canvas>
-    </div>
-    <p class="help">If the chart is empty, ensure Chart.js is loaded and the API returns labels &amp; datasets.</p>
   </div>
+  <div class="column is-one-third">
+    <div class="box has-text-centered">
+      <p class="heading">Orders Paid</p>
+      <p class="title is-4">{{ orders_counters.paid }}</p>
+    </div>
+  </div>
+  <div class="column is-one-third">
+    <div class="box has-text-centered">
+      <p class="heading">Orders Cancelled</p>
+      <p class="title is-4">{{ orders_counters.cancelled }}</p>
+    </div>
+  </div>
+
+  <div class="column is-one-third">
+    <div class="box has-text-centered">
+      <p class="heading">New Users Today</p>
+      <p class="title is-4">{{ users_counters.new_today }}</p>
+    </div>
+  </div>
+  <div class="column is-one-third">
+    <div class="box has-text-centered">
+      <p class="heading">New Users This Month</p>
+      <p class="title is-4">{{ users_counters.new_month }}</p>
+    </div>
+  </div>
+</div>
+
+<div class="box mt-5">
+  <div class="level">
+    <div class="level-left">
+      <h2 class="title is-5 mb-0">Recent Orders</h2>
+    </div>
+    {# If orders:list doesn't exist, change/remove this link #}
+    <div class="level-right">
+      <a class="button is-light is-small" href="{% url 'orders:list' %}">View all</a>
+    </div>
+  </div>
+
+  <div class="table-container">
+    <table class="table is-fullwidth is-striped is-hoverable" aria-label="Recent orders">
+      <thead>
+        <tr>
+          <th>#</th>
+          <th>Customer</th>
+          <th>Items</th>
+          <th>Total</th>
+          <th>Status</th>
+          <th>Placed</th>
+          <th class="has-text-right">Actions</th>
+        </tr>
+      </thead>
+      <tbody>
+      {% for order in recent_orders %}
+        <tr id="order-row-{{ order.id }}">
+          <td><a href="{% url 'orders:detail' order.id %}">{{ order.number }}</a></td>
+
+          <td>
+            {% if order.customer and order.customer.user %}
+              {{ order.customer.user.get_full_name|default:order.customer.user.email }}
+            {% else %}
+              Guest
+            {% endif %}
+          </td>
+
+          <td>
+            {% for it in order.items.all|slice:":3" %}
+              <span class="tag is-light mb-1">{{ it.product.name|truncatechars:24 }}</span>
+            {% empty %}
+              <span class="has-text-grey">—</span>
+            {% endfor %}
+          </td>
+
+          <td>{{ order.grand_total|floatformat:2 }} {{ order.currency|default:"EUR" }}</td>
+
+          <td>
+            {% include "backoffice/partials/_order_status_badge.html" with status=order.status %}
+          </td>
+
+          <td>{{ order.placed_at|naturaltime }}</td>
+
+          <td class="has-text-right">
+            <form class="inline-status-form"
+                  action="{% url 'backoffice:set_status' order.id %}"
+                  method="post"
+                  data-order-id="{{ order.id }}">
+              {% csrf_token %}
+              <div class="field has-addons is-inline-block">
+                <p class="control">
+                  <span class="select is-small">
+                    <select name="status" aria-label="Change status">
+                      {% if order.STATUS_CHOICES %}
+                        {% for key,label in order.STATUS_CHOICES %}
+                          <option value="{{ key }}" {% if key == order.status %}selected{% endif %}>{{ label }}</option>
+                        {% endfor %}
+                      {% else %}
+                        <option value="pending"   {% if order.status == "pending" %}selected{% endif %}>Pending</option>
+                        <option value="paid"      {% if order.status == "paid" %}selected{% endif %}>Paid</option>
+                        <option value="processing"{% if order.status == "processing" %}selected{% endif %}>Processing</option>
+                        <option value="shipped"   {% if order.status == "shipped" %}selected{% endif %}>Shipped</option>
+                        <option value="delivered" {% if order.status == "delivered" %}selected{% endif %}>Delivered</option>
+                        <option value="canceled"  {% if order.status == "canceled" %}selected{% endif %}>Canceled</option>
+                      {% endif %}
+                    </select>
+                  </span>
+                </p>
+                <p class="control">
+                  <button type="submit" class="button is-small is-primary">Set</button>
+                </p>
+              </div>
+            </form>
+
+            <a class="button is-small is-white" href="{% url 'orders:detail' order.id %}">Details</a>
+          </td>
+        </tr>
+      {% empty %}
+        <tr><td colspan="7" class="has-text-centered has-text-grey">No recent orders.</td></tr>
+      {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+
+<div class="box mt-5">
+  <div class="level">
+    <div class="level-left">
+      <h2 class="title is-5 mb-0">Sales (Last 30 days)</h2>
+    </div>
+  </div>
+  <div style="height: 260px;">
+    <canvas id="salesChart"
+            role="img"
+            aria-label="Sales line chart"
+            data-sales-url="{{ sales_api_url }}"></canvas>
+  </div>
+  <p class="help">If the chart is empty, ensure Chart.js is loaded and the API returns labels &amp; datasets.</p>
+</div>
 
 {% endblock %}
 
 {% block extra_js %}
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 <script>
-// Auto-submit on change to reduce clicks
+// Auto-submit on select change
 document.querySelectorAll(".inline-status-form select[name='status']").forEach(function(sel){
   sel.addEventListener("change", function(){
     this.form.requestSubmit();
   });
 });
 
-// Inline status change (POST to set_status) with small UX niceties
+// Inline status change (AJAX)
 document.querySelectorAll(".inline-status-form").forEach(function(form){
   form.addEventListener("submit", async function(e){
     e.preventDefault();
@@ -153,7 +198,7 @@ document.querySelectorAll(".inline-status-form").forEach(function(form){
       });
       if (!resp.ok) throw new Error("Request failed");
 
-      const data = await resp.json(); // {ok: true, status: "...", badge_html: "..."}
+      const data = await resp.json();
       if (data.ok) {
         const row = document.getElementById(`order-row-${orderId}`);
         const badgeCell = row.querySelector("td:nth-child(5)");

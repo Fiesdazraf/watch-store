@@ -1,4 +1,7 @@
 # apps/backoffice/views.py
+import csv
+from datetime import datetime
+
 from django.contrib import messages
 from django.contrib.admin.views.decorators import staff_member_required
 from django.core.exceptions import FieldDoesNotExist
@@ -7,12 +10,19 @@ from django.http import HttpRequest, HttpResponse, HttpResponseBadRequest, JsonR
 from django.shortcuts import get_object_or_404, redirect, render
 from django.template.loader import render_to_string
 from django.urls import reverse
+from django.utils import timezone
 from django.views.decorators.http import require_POST
 
 from apps.orders.models import Order, OrderItem, OrderStatusLog
+from apps.orders.services import (
+    get_orders_counters,
+    get_sales_kpis,
+    get_sales_timeseries_by_day,
+    get_users_counters,
+)
 
 from .permissions import staff_required
-from .services import daily_sales, kpis
+from .services import kpis
 
 
 def health(_: HttpRequest) -> HttpResponse:
@@ -24,17 +34,23 @@ def dashboard_view(request: HttpRequest) -> HttpResponse:
     # ❗️ NOTE: Prefetch با slicing مجاز نیست؛ پس بدون [:3] بگذار و توی تمپلیت slice کن.
     recent_orders = (
         Order.objects.select_related("customer", "customer__user")
-        .prefetch_related(Prefetch("items", queryset=OrderItem.objects.select_related("product")))
+        .prefetch_related(
+            Prefetch(
+                "items",
+                queryset=OrderItem.objects.select_related("product"),
+            )
+        )
         .order_by("-placed_at")[:10]
     )
 
     context = {
         "recent_orders": recent_orders,
-        # اگر KPIها را جای دیگری حساب می‌کنید، همان را پاس بدهید یا از kpis_api فرانت بگیرد.
-        # "kpis": kpis(),
-        # بهتر از build_absolute_uri اینه که از reverse استفاده کنیم:
         "sales_api_url": request.build_absolute_uri(reverse("backoffice:sales_api")),
-        "set_status_url_name": "backoffice:set_status",  # برای تمپلیت
+        "set_status_url_name": "backoffice:set_status",
+        "sales_kpis": get_sales_kpis(),
+        "orders_counters": get_orders_counters(),
+        "users_counters": get_users_counters(),
+        "now": timezone.now(),
     }
     return render(request, "backoffice/dashboard.html", context)
 
@@ -64,8 +80,9 @@ def sales_api(request: HttpRequest) -> JsonResponse:
     }
     """
     days = int(request.GET.get("days", 30))
-    series = daily_sales(days)  # ممکن است کلیدهای متفاوتی داشته باشد
-
+    end = timezone.localdate()
+    start = end - timezone.timedelta(days=days - 1)
+    series = get_sales_timeseries_by_day(start, end)
     # اگر خالی بود، خروجی خالی اما معتبر بده
     if not series:
         return JsonResponse(
@@ -231,3 +248,62 @@ def set_status_view(request: HttpRequest, order_id: int) -> JsonResponse:
     return JsonResponse(
         {"ok": True, "status": getattr(order, "status", new_status), "badge_html": badge_html}
     )
+
+
+# apps/backoffice/views.py (append)
+
+
+@staff_member_required
+def reports_view(request):
+    # Parse date filters (YYYY-MM-DD)
+    start_str = request.GET.get("start")
+    end_str = request.GET.get("end")
+
+    today = timezone.localdate()
+    default_start = today.replace(day=1)
+    default_end = today
+
+    try:
+        start = datetime.strptime(start_str, "%Y-%m-%d").date() if start_str else default_start
+        end = datetime.strptime(end_str, "%Y-%m-%d").date() if end_str else default_end
+    except ValueError:
+        start, end = default_start, default_end
+
+    series = get_sales_timeseries_by_day(start, end)
+
+    context = {
+        "start": start,
+        "end": end,
+        "series": series,
+        "total_sum": sum(p["value"] for p in series),
+    }
+    return render(request, "backoffice/reports.html", context)
+
+
+@staff_member_required
+def export_sales_csv_view(request):
+    # Same parsing as reports_view to keep export in sync
+    start_str = request.GET.get("start")
+    end_str = request.GET.get("end")
+
+    today = timezone.localdate()
+    default_start = today.replace(day=1)
+    default_end = today
+
+    try:
+        start = datetime.strptime(start_str, "%Y-%m-%d").date() if start_str else default_start
+        end = datetime.strptime(end_str, "%Y-%m-%d").date() if end_str else default_end
+    except ValueError:
+        start, end = default_start, default_end
+
+    series = get_sales_timeseries_by_day(start, end)
+
+    resp = HttpResponse(content_type="text/csv; charset=utf-8")
+    resp["Content-Disposition"] = f'attachment; filename="sales_{start}_to_{end}.csv"'
+
+    writer = csv.writer(resp)
+    writer.writerow(["date", "sales"])
+    for p in series:
+        writer.writerow([p["label"], f'{p["value"]:.2f}'])
+
+    return resp

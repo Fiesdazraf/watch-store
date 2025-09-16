@@ -1,12 +1,16 @@
 # apps/orders/services.py
 from __future__ import annotations
 
+from datetime import date, datetime, timedelta
 from decimal import Decimal, InvalidOperation
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, TypedDict
 
+from django.contrib.auth import get_user_model
 from django.core.exceptions import FieldDoesNotExist
 from django.db import models, transaction
-from django.db.models import DecimalField, ExpressionWrapper, F, Sum
+from django.db.models import DecimalField, ExpressionWrapper, F, Sum, Value
+from django.db.models.functions import Coalesce, TruncDate
+from django.utils import timezone
 
 from .models import (
     Cart,
@@ -23,8 +27,7 @@ if TYPE_CHECKING:
     from apps.customers.models import Customer
     from apps.payments.models import Payment as PaymentModel
 
-    # Optional: add concrete types for product & variant if you want stronger hints
-    # from apps.catalog.models import Product, ProductVariant
+User = get_user_model()
 
 
 # ----------------------------
@@ -60,15 +63,6 @@ def _unit_price_for(product, variant=None) -> Decimal:
 def add_to_cart(*, cart: Cart, product, variant=None, qty: int = 1) -> CartItem:
     """
     Add a product/variant to the given cart, increasing quantity when item already exists.
-
-    Args:
-        cart: Current cart instance (guest or user cart).
-        product: Product to add.
-        variant: Optional variant to pair with product.
-        qty: Quantity to add (>=1).
-
-    Returns:
-        The affected/created CartItem (with current unit_price snapshot).
     """
     qty = int(qty or 1)
     if qty < 1:
@@ -83,7 +77,7 @@ def add_to_cart(*, cart: Cart, product, variant=None, qty: int = 1) -> CartItem:
         defaults={"unit_price": unit_price, "quantity": qty},
     )
     if not created:
-        # Safe, concurrent-friendly increment
+        # Concurrent-safe increment
         CartItem.objects.filter(pk=item.pk).update(quantity=F("quantity") + qty)
         item.refresh_from_db(fields=["quantity"])
         # Keep latest unit price snapshot policy
@@ -223,9 +217,157 @@ def create_order_from_cart(
     return order, None
 
 
+# ---- Analytics helpers -----------------------------------------------------
+
+# IMPORTANT: set this to the real field on Order, otherwise KPIs will be zero.
+TOTAL_FIELD = "grand_total"  # adjust if your model uses another name
+
+
+def _total_annotation():
+    # Coalesce to 0, so Sum works even with nulls
+    return Coalesce(
+        F(TOTAL_FIELD),
+        Value(0, output_field=DecimalField(max_digits=12, decimal_places=2)),
+        output_field=DecimalField(max_digits=12, decimal_places=2),
+    )
+
+
+def _today_range():
+    now = timezone.now()
+    start = now.replace(hour=0, minute=0, second=0, microsecond=0)
+    return start, now
+
+
+def _week_range():
+    now = timezone.now()
+    start_of_week = (now - timedelta(days=now.weekday())).replace(
+        hour=0, minute=0, second=0, microsecond=0
+    )
+    return start_of_week, now
+
+
+def _month_range():
+    now = timezone.now()
+    start = now.replace(day=1, hour=0, minute=0, second=0, microsecond=0)
+    return start, now
+
+
+# ---- KPIs -----------------------------------------------------------------
+class SalesKPIs(TypedDict):
+    today: float
+    week: float
+    month: float
+
+
+def get_sales_kpis() -> SalesKPIs:
+    """
+    Sum paid/confirmed orders over today/week/month.
+    Adjust statuses to your actual statuses.
+    """
+    paid_statuses = {OrderStatus.PAID, "completed", "fulfilled"}
+    start_today, end_today = _today_range()
+    start_week, end_week = _week_range()
+    start_month, end_month = _month_range()
+
+    base = Order.objects.filter(status__in=paid_statuses)
+
+    def _sum_between(start, end) -> float:
+        agg = base.filter(placed_at__gte=start, placed_at__lte=end).aggregate(
+            total=Sum(_total_annotation())
+        )
+        return float(agg["total"] or 0)
+
+    return {
+        "today": _sum_between(start_today, end_today),
+        "week": _sum_between(start_week, end_week),
+        "month": _sum_between(start_month, end_month),
+    }
+
+
+class OrdersCounters(TypedDict):
+    pending: int
+    paid: int
+    cancelled: int
+
+
+def get_orders_counters() -> OrdersCounters:
+    pending_statuses = {OrderStatus.PENDING, "awaiting_payment"}
+    paid_statuses = {OrderStatus.PAID, "completed", "fulfilled"}
+    cancelled_statuses = {"cancelled", "refunded"}
+
+    return {
+        "pending": Order.objects.filter(status__in=pending_statuses).count(),
+        "paid": Order.objects.filter(status__in=paid_statuses).count(),
+        "cancelled": Order.objects.filter(status__in=cancelled_statuses).count(),
+    }
+
+
+class UsersCounters(TypedDict):
+    new_today: int
+    new_month: int
+
+
+def get_users_counters() -> UsersCounters:
+    start_today, end_today = _today_range()
+    start_month, end_month = _month_range()
+
+    def _count_between(start, end) -> int:
+        # Adjust 'date_joined' if you use another field
+        return User.objects.filter(date_joined__gte=start, date_joined__lte=end).count()
+
+    return {
+        "new_today": _count_between(start_today, end_today),
+        "new_month": _count_between(start_month, end_month),
+    }
+
+
+# ---- Timeseries for charts -------------------------------------------------
+class Point(TypedDict):
+    label: str
+    value: float
+
+
+def get_sales_timeseries_by_day(start: date, end: date) -> list[Point]:
+    """
+    Returns daily sum over [start, end], inclusive.
+    Requires Order.placed_at (DateTime) and TOTAL_FIELD.
+    """
+    start_dt = timezone.make_aware(datetime.combine(start, datetime.min.time()))
+    end_dt = timezone.make_aware(datetime.combine(end, datetime.max.time()))
+
+    qs = (
+        Order.objects.filter(
+            status__in={OrderStatus.PAID, "completed", "fulfilled"},
+            placed_at__gte=start_dt,
+            placed_at__lte=end_dt,
+        )
+        .annotate(day=TruncDate("placed_at"))
+        .values("day")
+        .annotate(total=Sum(_total_annotation()))
+        .order_by("day")
+    )
+
+    # Build full sequence to fill missing days with 0
+    data: dict[str, float] = {str(r["day"]): float(r["total"] or 0) for r in qs}
+
+    out: list[Point] = []
+    d = start
+    while d <= end:
+        key = str(d)
+        out.append({"label": key, "value": data.get(key, 0.0)})
+        d += timedelta(days=1)
+
+    return out
+
+
 __all__ = [
     "add_to_cart",
     "set_shipping_method",
     "cart_total",
     "create_order_from_cart",
+    # analytics
+    "get_sales_kpis",
+    "get_orders_counters",
+    "get_users_counters",
+    "get_sales_timeseries_by_day",
 ]

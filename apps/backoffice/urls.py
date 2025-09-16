@@ -1,9 +1,12 @@
+# apps/backoffice/urls.py
 from django.urls import path
 
 from .views import (
     dashboard_view,
+    export_sales_csv_view,
     health,
     kpis_api,
+    reports_view,
     sales_api,
     set_status_redirect_view,
     set_status_view,
@@ -12,16 +15,12 @@ from .views import (
 app_name = "backoffice"
 
 urlpatterns = [
-    path("", dashboard_view, name="dashboard"),
     path("health/", health, name="health"),
+    path("", dashboard_view, name="dashboard"),
     path("api/kpis/", kpis_api, name="kpis_api"),
     path("api/sales/", sales_api, name="sales_api"),
-    path(
-        "orders/<int:order_id>/set-status/", set_status_view, name="set_status"
-    ),  # AJAX request view
-    path(
-        "orders/<int:order_id>/set-status-redirect/",
-        set_status_redirect_view,
-        name="set_status_redirect",
-    ),  # non-AJAX request view
+    path("reports/", reports_view, name="reports"),
+    path("reports/export/csv/", export_sales_csv_view, name="reports_export_csv"),
+    path("orders/<int:order_id>/status/", set_status_redirect_view, name="set_status_redirect"),
+    path("api/orders/<int:order_id>/status/", set_status_view, name="set_status"),
 ]
