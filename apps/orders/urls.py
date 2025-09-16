@@ -10,30 +10,24 @@ from .views import (
     order_thanks_view,
     payment_history_view,
     remove_cart_item,
+    remove_from_cart_view,
     update_cart_item,
 )
 
 app_name = "orders"
 
 urlpatterns = [
-    # ------------------------------
-    # Cart
-    # ------------------------------
     path("cart/", cart_detail, name="cart_detail"),
     path("cart/add/<int:product_id>/", add_to_cart_view, name="add_to_cart"),
     path("cart/item/<int:item_id>/update/", update_cart_item, name="update_cart_item"),
     path("cart/item/<int:item_id>/remove/", remove_cart_item, name="remove_cart_item"),
-    # 👇 alias برای تست‌ها (برخی تست‌ها دنبال remove_from_cart می‌گردند)
-    path("cart/remove/<int:item_id>/", remove_cart_item, name="remove_from_cart"),
-    # ------------------------------
-    # Orders
-    # ------------------------------
-    path("orders/", order_history_view, name="order_history"),
-    path("orders/<str:number>/", order_detail_view, name="order_detail"),
+    path("cart/items/<int:pk>/remove/", remove_from_cart_view, name="remove_from_cart"),
     path("checkout/", checkout_view, name="checkout"),
-    path("thanks/<str:number>/", order_thanks_view, name="thanks"),
-    # ------------------------------
-    # Payments (history view only — checkout/success/failed in apps.payments)
-    # ------------------------------
+    # تاریخچه سفارش‌ها
+    path("account/orders/", order_history_view, name="history"),
+    path("account/orders/<str:number>/", order_detail_view, name="detail"),
+    # 🔁 alias برای سازگاری با تست‌های قدیمی
+    path("orders/", order_history_view, name="list"),  # <- اضافه شد (back-compat)
     path("payments/", payment_history_view, name="payments"),
+    path("thanks/<str:number>/", order_thanks_view, name="thanks"),
 ]

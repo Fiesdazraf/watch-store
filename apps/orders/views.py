@@ -9,7 +9,6 @@ from django.contrib.auth.decorators import login_required
 from django.core.exceptions import FieldDoesNotExist
 from django.core.paginator import Paginator
 from django.db import transaction
-from django.db.models import Prefetch
 from django.http import HttpRequest, HttpResponse
 from django.shortcuts import get_object_or_404, redirect, render
 from django.views.decorators.http import require_POST
@@ -29,9 +28,6 @@ from .services import (
 from .utils import send_order_confirmation_email
 
 
-# -----------------------------------------------------------------------------
-# Helpers
-# -----------------------------------------------------------------------------
 def _parse_qty(value, default: int = 1, minimum: int = 1, maximum: int | None = None) -> int:
     try:
         qty = int(value)
@@ -50,11 +46,6 @@ def _ensure_session(request: HttpRequest) -> None:
 
 
 def _get_cart(request: HttpRequest) -> Cart:
-    """
-    Unified cart fetcher:
-      - If user is authenticated: return/get_or_create the user's cart.
-      - Otherwise: return/get_or_create the guest cart by session_key.
-    """
     _ensure_session(request)
 
     if request.user.is_authenticated:
@@ -72,10 +63,6 @@ def _get_cart(request: HttpRequest) -> Cart:
 
 
 def _merge_session_cart_into_user(request: HttpRequest) -> None:
-    """
-    If a guest cart exists for the current session and the user is now authenticated,
-    merge its items into the user's cart and delete the guest cart when empty.
-    """
     if not request.user.is_authenticated:
         return
 
@@ -91,7 +78,6 @@ def _merge_session_cart_into_user(request: HttpRequest) -> None:
         defaults={"session_key": session_key or ""},
     )
 
-    # Merge strategy: same (product, variant) => sum qty; otherwise reassign item to user cart
     for gi in guest.items.select_related("product", "variant"):
         existing = user_cart.items.filter(product=gi.product, variant=gi.variant).first()
         if existing:
@@ -106,24 +92,45 @@ def _merge_session_cart_into_user(request: HttpRequest) -> None:
         guest.delete()
 
 
-# -----------------------------------------------------------------------------
-# Cart views
-# -----------------------------------------------------------------------------
+def _model_has_field(model, field_name: str) -> bool:
+    try:
+        model._meta.get_field(field_name)
+        return True
+    except FieldDoesNotExist:
+        return False
+
+
+def _address_qs_for_owner(*, user, customer):
+    AddressModel = apps.get_model("accounts", "Address")
+    if _model_has_field(AddressModel, "user"):
+        return AddressModel.objects.filter(user=user)
+    if _model_has_field(AddressModel, "customer"):
+        return AddressModel.objects.filter(customer=customer)
+    return AddressModel.objects.none()
+
+
+def _address_create_kwargs(*, user, customer) -> dict:
+    AddressModel = apps.get_model("accounts", "Address")
+    if _model_has_field(AddressModel, "user"):
+        return {"user": user}
+    if _model_has_field(AddressModel, "customer"):
+        return {"customer": customer}
+    return {}
+
+
+# ----------------------------- Cart -----------------------------
 def cart_detail(request: HttpRequest) -> HttpResponse:
     cart = _get_cart(request)
     items = cart.items.select_related("product", "variant", "product__brand").order_by("-id")
     subtotal = cart_total(cart)
-    ctx = {"cart": cart, "items": items, "subtotal": subtotal}
-    return render(request, "orders/cart_detail.html", ctx)
+    return render(
+        request, "orders/cart_detail.html", {"cart": cart, "items": items, "subtotal": subtotal}
+    )
 
 
 @require_POST
 @transaction.atomic
 def add_to_cart_view(request: HttpRequest, product_id: int) -> HttpResponse:
-    """
-    Add a product (optionally with variant) to the current cart.
-    Works for both guests (session cart) and authenticated users.
-    """
     _merge_session_cart_into_user(request)
     cart = _get_cart(request)
 
@@ -136,7 +143,6 @@ def add_to_cart_view(request: HttpRequest, product_id: int) -> HttpResponse:
         variant = get_object_or_404(ProductVariant, pk=variant_id, product=product)
 
     add_to_cart(cart=cart, product=product, variant=variant, qty=qty)
-
     messages.success(request, "Item added to cart.")
     return redirect("orders:cart_detail")
 
@@ -170,9 +176,24 @@ def remove_cart_item(request: HttpRequest, item_id: int) -> HttpResponse:
     return redirect("orders:cart_detail")
 
 
-# -----------------------------------------------------------------------------
-# Orders list / detail
-# -----------------------------------------------------------------------------
+@transaction.atomic
+def remove_from_cart_view(request, pk: int):
+    """
+    Remove a CartItem by primary key from the *current* cart (guest or user).
+    Safe against tampering: only deletes if the item belongs to the active cart.
+    """
+    _merge_session_cart_into_user(request)
+    cart = _get_cart(request)
+
+    # Limit deletion to items in the current cart
+    item = get_object_or_404(CartItem, pk=pk, cart=cart)
+    item.delete()
+
+    messages.success(request, "Item removed from cart.")
+    return redirect("orders:cart_detail")
+
+
+# ----------------------------- Orders -----------------------------
 @login_required
 def order_history_view(request: HttpRequest) -> HttpResponse:
     customer = getattr(request.user, "customer", None)
@@ -181,6 +202,7 @@ def order_history_view(request: HttpRequest) -> HttpResponse:
         orders = (
             Order.objects.filter(customer=customer)
             .select_related("shipping_address", "shipping_method", "customer", "customer__user")
+            .prefetch_related("items", "items__product", "items__variant", "items__product__images")
             .order_by("-placed_at")
         )
     return render(request, "orders/order_history.html", {"orders": orders})
@@ -192,98 +214,41 @@ def order_detail_view(request: HttpRequest, number: str) -> HttpResponse:
     order = get_object_or_404(
         Order.objects.select_related(
             "shipping_address", "shipping_method", "customer", "customer__user"
-        ).prefetch_related("items"),
+        ).prefetch_related("items", "items__product", "items__variant", "items__product__images"),
         customer=customer,
         number=number,
     )
     return render(request, "orders/order_detail.html", {"order": order})
 
 
-def _model_has_field(model, field_name: str) -> bool:
-    try:
-        model._meta.get_field(field_name)
-        return True
-    except FieldDoesNotExist:
-        return False
-
-
-def _address_qs_for_owner(*, user, customer):
-    """
-    Owner-agnostic address queryset (works for Address.user or Address.customer).
-    """
-    AddressModel = apps.get_model("accounts", "Address")
-    if _model_has_field(AddressModel, "user"):
-        return AddressModel.objects.filter(user=user)
-    if _model_has_field(AddressModel, "customer"):
-        return AddressModel.objects.filter(customer=customer)
-    return AddressModel.objects.none()
-
-
-def _address_create_kwargs(*, user, customer) -> dict:
-    """
-    Owner-agnostic kwargs for Address creation.
-    """
-    AddressModel = apps.get_model("accounts", "Address")
-    if _model_has_field(AddressModel, "user"):
-        return {"user": user}
-    if _model_has_field(AddressModel, "customer"):
-        return {"customer": customer}
-    return {}
-
-
-# -----------------------------------------------------------------------------
-# Checkout
-# -----------------------------------------------------------------------------
+# ----------------------------- Checkout -----------------------------
 @login_required
 @transaction.atomic
 def checkout_view(request: HttpRequest) -> HttpResponse:
-    """
-    POST:
-      - Merge guest cart -> user cart (if any)
-      - Resolve address & shipping method with safe fallbacks
-      - Create order from cart
-      - Redirect to payments:checkout
-
-    GET:
-      - Render a summary page
-    """
-    # 1) merge guest cart if needed + get current cart
     _merge_session_cart_into_user(request)
     cart = _get_cart(request)
 
-    # If cart is empty, try last user cart that has items
     if not cart.items.exists() and request.user.is_authenticated:
         candidate = (
-            Cart.objects.filter(user=request.user)
-            .prefetch_related(Prefetch("items", queryset=CartItem.objects.only("id")))
-            .order_by("-id")
-            .first()
+            Cart.objects.filter(user=request.user).prefetch_related("items").order_by("-id").first()
         )
         if candidate and candidate.items.exists():
             cart = candidate
 
-    # -------------------------
-    # POST => place order
-    # -------------------------
     if request.method == "POST":
-        # Try binding form (but flow shouldn't hard-crash if form invalid)
         try:
             form = CheckoutForm(request.POST, user=request.user)
             valid = form.is_valid()
         except Exception:
             form, valid = None, False
 
-        # Ensure Customer row
         customer, _ = Customer.objects.get_or_create(user=request.user)
 
-        # --- Address (owner-agnostic) ---
         address = form.cleaned_data.get("address") if (valid and form) else None
         if address is None:
-            # Fetch first address for owner
             addr_qs = _address_qs_for_owner(user=request.user, customer=customer)
             address = addr_qs.first()
             if address is None:
-                # Create a minimal address that satisfies required fields
                 owner_kwargs = _address_create_kwargs(user=request.user, customer=customer)
                 address = Address.objects.create(
                     **owner_kwargs,
@@ -295,7 +260,6 @@ def checkout_view(request: HttpRequest) -> HttpResponse:
                     phone_number="0000000000",
                 )
 
-        # --- Shipping method ---
         shipping_method = form.cleaned_data.get("shipping_method") if (valid and form) else None
         if shipping_method is None:
             shipping_method = (
@@ -309,13 +273,10 @@ def checkout_view(request: HttpRequest) -> HttpResponse:
                     base_price=Decimal("0.00"),
                     is_active=True,
                 )
-            # Persist on cart if field exists
             if hasattr(cart, "shipping_method"):
                 set_shipping_method(cart=cart, shipping_method=shipping_method)
 
-        # --- Payment method & notes (optional) ---
         pm_input = (request.POST.get("payment_method") or "").strip()
-        # Read allowed choices & default from the Order model field itself
         pm_field = Order._meta.get_field("payment_method")
         allowed_pm = {key for key, _ in pm_field.choices}
         default_pm = pm_field.default
@@ -323,12 +284,10 @@ def checkout_view(request: HttpRequest) -> HttpResponse:
 
         notes = (request.POST.get("notes") or "").strip()
 
-        # Safety: require non-empty cart
         if not cart.items.exists():
             messages.error(request, "Your cart is empty.")
             return redirect("orders:cart_detail")
 
-        # Create order
         order, _payment = create_order_from_cart(
             customer=customer,
             shipping_address=address,
@@ -339,23 +298,19 @@ def checkout_view(request: HttpRequest) -> HttpResponse:
             notes=notes,
         )
 
-        # Soft-try confirmation email; don't break on failures in tests
         try:
             send_order_confirmation_email(order)
         except Exception:
             pass
 
-        # Tests expect redirect to payments:checkout
         return redirect("payments:checkout", order_number=order.number)
 
-    # -------------------------
-    # GET => summary
-    # -------------------------
     try:
         form = CheckoutForm(user=request.user)
     except Exception:
         form = None
-    items = cart.items.select_related("product", "variant")
+
+    items = cart.items.select_related("product", "variant", "product__brand").order_by("-id")
     subtotal = cart_total(cart)
     return render(
         request,
@@ -364,9 +319,6 @@ def checkout_view(request: HttpRequest) -> HttpResponse:
     )
 
 
-# -----------------------------------------------------------------------------
-# Payment history / Thanks
-# -----------------------------------------------------------------------------
 @login_required
 def payment_history_view(request: HttpRequest) -> HttpResponse:
     from apps.payments.models import Payment

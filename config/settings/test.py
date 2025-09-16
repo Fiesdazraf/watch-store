@@ -33,3 +33,20 @@ CACHES = {
 
 # If you have a custom user model, define it explicitly
 # AUTH_USER_MODEL = "accounts.User"
+
+# Make staticfiles forgiving in tests
+STATICFILES_STORAGE = "django.contrib.staticfiles.storage.StaticFilesStorage"
+
+from django.contrib.staticfiles.finders import AppDirectoriesFinder, FileSystemFinder  # noqa
+
+STATICFILES_DIRS = getattr(globals(), "STATICFILES_DIRS", [])
+STATICFILES_FINDERS = [
+    "django.contrib.staticfiles.finders.FileSystemFinder",
+    "django.contrib.staticfiles.finders.AppDirectoriesFinder",
+]
+
+# ---- Force simple static storage in tests even if base uses STORAGES/WhiteNoise
+STORAGES = globals().get("STORAGES", {}) or {}
+STORAGES["staticfiles"] = {
+    "BACKEND": "django.contrib.staticfiles.storage.StaticFilesStorage",
+}

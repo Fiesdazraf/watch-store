@@ -1,21 +1,24 @@
+# apps/catalog/models.py
+from __future__ import annotations
+
 from decimal import Decimal
+from functools import cached_property
 
 from django.db import models
-from django.db.models import UniqueConstraint
+from django.db.models import Q, UniqueConstraint
 from django.utils.text import slugify
 
 
+# -----------------------------------------------------------------------------
+# Category
+# -----------------------------------------------------------------------------
 class Category(models.Model):
     """
     Hierarchical category (e.g. Men > Luxury > Rolex, or Unisex > Entry-level).
     """
 
-    name = models.CharField(
-        max_length=120
-    )  # no global unique (allow same name under different parents)
-    slug = models.SlugField(
-        max_length=140, blank=True
-    )  # uniqueness handled via UniqueConstraint below
+    name = models.CharField(max_length=120)
+    slug = models.SlugField(max_length=140, blank=True)  # per-parent uniqueness via constraint
     parent = models.ForeignKey(
         "self",
         on_delete=models.CASCADE,
@@ -40,7 +43,7 @@ class Category(models.Model):
             ),
         ]
 
-    def __str__(self):
+    def __str__(self) -> str:
         # Show full path like: Men > Luxury > Rolex
         parts = [self.name]
         p = self.parent
@@ -55,6 +58,9 @@ class Category(models.Model):
         super().save(*args, **kwargs)
 
 
+# -----------------------------------------------------------------------------
+# Brand
+# -----------------------------------------------------------------------------
 class Brand(models.Model):
     """
     Watch brand (e.g., Seiko, Omega, Rolex).
@@ -76,7 +82,7 @@ class Brand(models.Model):
         ordering = ["name"]
         indexes = [models.Index(fields=["slug"])]
 
-    def __str__(self):
+    def __str__(self) -> str:
         return self.name
 
     def save(self, *args, **kwargs):
@@ -85,6 +91,9 @@ class Brand(models.Model):
         super().save(*args, **kwargs)
 
 
+# -----------------------------------------------------------------------------
+# Collection
+# -----------------------------------------------------------------------------
 class Collection(models.Model):
     """
     Product grouping/line (e.g., Diver, Dress, Chronograph).
@@ -106,7 +115,7 @@ class Collection(models.Model):
         ordering = ["name"]
         indexes = [models.Index(fields=["slug"])]
 
-    def __str__(self):
+    def __str__(self) -> str:
         return self.name
 
     def save(self, *args, **kwargs):
@@ -115,44 +124,122 @@ class Collection(models.Model):
         super().save(*args, **kwargs)
 
 
+# -----------------------------------------------------------------------------
+# ProductImage  (زودتر می‌آد تا QuerySet بتونه Prefetch بسازه)
+# -----------------------------------------------------------------------------
+class ProductImage(models.Model):
+    product = models.ForeignKey("Product", related_name="images", on_delete=models.CASCADE)
+    image = models.ImageField(upload_to="products/")
+    alt = models.CharField(max_length=160, blank=True)
+    is_primary = models.BooleanField(default=False)
+
+    class Meta:
+        ordering = ["-is_primary", "id"]
+        constraints = [
+            # ensure only one primary image per product
+            UniqueConstraint(
+                fields=["product"],
+                condition=Q(is_primary=True),
+                name="uniq_primary_image_per_product",
+            )
+        ]
+
+    def __str__(self) -> str:
+        return f"Image #{self.pk} for {self.product_id}"
+
+
+# -----------------------------------------------------------------------------
+# ProductQuerySet / ProductManager  (قبل از Product)
+# -----------------------------------------------------------------------------
+class ProductQuerySet(models.QuerySet):
+    def active(self):
+        return self.filter(is_active=True)
+
+    def for_list(self):
+        # Lightweight prefetch for listing cards
+        return (
+            self.active()
+            .select_related("brand", "category", "collection")
+            .prefetch_related(
+                models.Prefetch(
+                    "images",
+                    queryset=ProductImage.objects.only(
+                        "id", "image", "is_primary", "product_id"
+                    ).order_by("-is_primary", "id"),
+                ),
+                "variants",
+            )
+        )
+
+    def for_detail(self):
+        # Richer prefetch for PDP
+        return (
+            self.active()
+            .select_related("brand", "category", "collection")
+            .prefetch_related(
+                models.Prefetch(
+                    "images",
+                    queryset=ProductImage.objects.only(
+                        "id", "image", "alt", "is_primary", "product_id"
+                    ).order_by("-is_primary", "id"),
+                ),
+                "variants",
+            )
+        )
+
+
+class ProductManager(models.Manager):
+    def get_queryset(self):
+        return ProductQuerySet(self.model, using=self._db)
+
+    # sugar methods
+    def active(self):
+        return self.get_queryset().active()
+
+    def for_list(self):
+        return self.get_queryset().for_list()
+
+    def for_detail(self):
+        return self.get_queryset().for_detail()
+
+
+# -----------------------------------------------------------------------------
+# Product
+# -----------------------------------------------------------------------------
 class Product(models.Model):
     """
-    Minimal product for MVP, now linked to hierarchical Category.
+    Minimal product for MVP, linked to hierarchical Category.
     """
 
     title = models.CharField(max_length=200)
-    slug = models.SlugField(max_length=220, unique=True, blank=True)
+    slug = models.SlugField(max_length=220, unique=True, db_index=True, blank=True)
 
-    brand = models.ForeignKey(Brand, on_delete=models.PROTECT, related_name="products")
+    brand = models.ForeignKey(
+        "Brand", on_delete=models.PROTECT, related_name="products", db_index=True
+    )
     collection = models.ForeignKey(
-        Collection,
+        "Collection",
         on_delete=models.SET_NULL,
         null=True,
         blank=True,
         related_name="products",
     )
     category = models.ForeignKey(
-        Category,
+        "Category",
         on_delete=models.SET_NULL,
         null=True,
         blank=True,
         related_name="products",
         help_text="Attach product to the most specific category node (optional).",
+        db_index=True,
     )
+
+    objects = ProductManager()
 
     sku = models.CharField(max_length=64, unique=True)
     price = models.DecimalField(max_digits=10, decimal_places=2, default=Decimal("0.00"))
     is_active = models.BooleanField(default=True)
     created_at = models.DateTimeField(auto_now_add=True)
-
-    def __init__(self, *args, **kwargs):
-        super().__init__(*args, **kwargs)
-        # کوئرس امن روی اینستنسِ در حافظه
-        if isinstance(getattr(self, "price", None), str):
-            try:
-                self.price = Decimal(self.price)
-            except Exception:
-                pass
 
     class Meta:
         ordering = ["-created_at"]
@@ -162,9 +249,11 @@ class Product(models.Model):
             models.Index(fields=["brand"]),
             models.Index(fields=["category"]),
             models.Index(fields=["sku"]),
+            models.Index(fields=["is_active", "brand"]),
+            models.Index(fields=["is_active", "category"]),
         ]
 
-    def __str__(self):
+    def __str__(self) -> str:
         return self.title
 
     def save(self, *args, **kwargs):
@@ -172,7 +261,22 @@ class Product(models.Model):
             self.slug = slugify(self.title)
         super().save(*args, **kwargs)
 
+    @cached_property
+    def primary_image(self) -> ProductImage | None:
+        """
+        Returns the primary image if available; otherwise the first prefetched image.
+        Works best when images are prefetch_related.
+        """
+        imgs = list(getattr(self, "images").all())
+        for im in imgs:
+            if getattr(im, "is_primary", False):
+                return im
+        return imgs[0] if imgs else None
 
+
+# -----------------------------------------------------------------------------
+# ProductVariant
+# -----------------------------------------------------------------------------
 class ProductVariant(models.Model):
     """
     A simple variant model to represent options like strap/color/size, each with its own SKU/stock.
@@ -185,14 +289,6 @@ class ProductVariant(models.Model):
     value = models.CharField(max_length=60)  # e.g. "leather - brown", "blue", "42mm"
     extra_price = models.DecimalField(max_digits=10, decimal_places=2, default=Decimal("0.00"))
     stock = models.PositiveIntegerField(default=0)
-
-    def __init__(self, *args, **kwargs):
-        super().__init__(*args, **kwargs)
-        if isinstance(getattr(self, "extra_price", None), str):
-            try:
-                self.extra_price = Decimal(self.extra_price)
-            except Exception:
-                pass
 
     class Meta:
         verbose_name = "Product Variant"
@@ -208,15 +304,5 @@ class ProductVariant(models.Model):
             models.Index(fields=["product"]),
         ]
 
-    def __str__(self):
+    def __str__(self) -> str:
         return f"{self.product.title} - {self.attribute}: {self.value}"
-
-
-class ProductImage(models.Model):
-    product = models.ForeignKey(Product, related_name="images", on_delete=models.CASCADE)
-    image = models.ImageField(upload_to="products/")
-    alt = models.CharField(max_length=160, blank=True)
-    is_primary = models.BooleanField(default=False)
-
-    class Meta:
-        ordering = ["-is_primary", "id"]

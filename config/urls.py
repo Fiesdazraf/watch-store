@@ -1,24 +1,11 @@
-"""
-URL configuration for config project.
-
-The `urlpatterns` list routes URLs to views. For more information please see:
-    https://docs.djangoproject.com/en/5.2/topics/http/urls/
-Examples:
-Function views
-    1. Add an import:  from my_app import views
-    2. Add a URL to urlpatterns:  path('', views.home, name='home')
-Class-based views
-    1. Add an import:  from other_app.views import Home
-    2. Add a URL to urlpatterns:  path('', Home.as_view(), name='home')
-Including another URLconf
-    1. Import the include() function: from django.urls import include, path
-    2. Add a URL to urlpatterns:  path('blog/', include('blog.urls'))
-"""
-
 # config/urls.py
+from django.conf import settings
 from django.contrib import admin
 from django.http import HttpResponse
 from django.urls import include, path
+from django.views.decorators.cache import cache_page
+
+from apps.catalog.views import ProductListView
 
 
 def healthcheck(_):
@@ -29,14 +16,21 @@ def home(_):
     return HttpResponse("<h1>Watch Store - Setup Complete (Phase 1)</h1>")
 
 
+# Option A) cache the CBV inline
+cached_product_list = cache_page(60 * 2)(ProductListView.as_view())
+
 urlpatterns = [
     path("admin/", admin.site.urls),
     path("health/", healthcheck, name="health"),
-    # ✅ namespace باید داخل include باشد (نه پارامتر path)
     path("accounts/", include(("apps.accounts.urls", "accounts"), namespace="accounts")),
     path("payments/", include(("apps.payments.urls", "payments"), namespace="payments")),
-    path("backoffice/", include("apps.backoffice.urls", namespace="backoffice")),
+    path("backoffice/", include(("apps.backoffice.urls", "backoffice"), namespace="backoffice")),
+    path("products/", cached_product_list, name="product_list"),
+    path("home/", home, name="home"),
     path("", include(("apps.catalog.urls", "catalog"), namespace="catalog")),
     path("", include(("apps.orders.urls", "orders"), namespace="orders")),
-    path("", home, name="home"),  # می‌تونی اینو بالا/پایین نگه داری
 ]
+
+
+if settings.DEBUG:
+    urlpatterns += [path("__debug__/", include("debug_toolbar.urls"))]

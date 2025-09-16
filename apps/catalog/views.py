@@ -1,5 +1,6 @@
 from decimal import Decimal
 
+from django.core.cache import cache
 from django.db.models import Q
 from django.views.generic import DetailView, ListView
 
@@ -13,19 +14,33 @@ class ProductListView(ListView):
     paginate_by = 12
 
     def get_queryset(self):
-        qs = Product.objects.select_related("brand", "collection", "category").filter(
-            is_active=True
+        qs = (
+            Product.objects.select_related("brand", "collection", "category")
+            .prefetch_related(
+                "images",  # if you show images in product cards
+                "variants",  # if you show variants info in list
+            )
+            .only(
+                "id",
+                "slug",
+                "title",
+                "price",
+                "brand__name",
+                "brand__slug",
+                "category__name",
+                "category__slug",
+                "collection__name",
+            )
+            .filter(is_active=True)
         )
 
-        # --- Read filters
         q = self.request.GET.get("q")
         brand = self.request.GET.get("brand")
         cat = self.request.GET.get("category")
         pmin = self.request.GET.get("price_min")
         pmax = self.request.GET.get("price_max")
-        order = self.request.GET.get("order", "newest")  # default
+        order = self.request.GET.get("order", "newest")
 
-        # --- Apply text/choice filters
         if q:
             qs = qs.filter(
                 Q(title__icontains=q) | Q(sku__icontains=q) | Q(brand__name__icontains=q)
@@ -35,7 +50,6 @@ class ProductListView(ListView):
         if cat:
             qs = qs.filter(category__slug=cat)
 
-        # --- Validate numeric filters safely
         def to_decimal(x):
             try:
                 return Decimal(x)
@@ -44,30 +58,60 @@ class ProductListView(ListView):
 
         pmin_dec = to_decimal(pmin)
         pmax_dec = to_decimal(pmax)
-
         if pmin_dec is not None:
             qs = qs.filter(price__gte=pmin_dec)
         if pmax_dec is not None:
             qs = qs.filter(price__lte=pmax_dec)
 
-        # --- Safe ordering via whitelist
         allowed_orders = {
             "price_asc": "price",
             "price_desc": "-price",
             "newest": "-created_at",
         }
-        qs = qs.order_by(allowed_orders.get(order, "-created_at"))
+        return qs.order_by(allowed_orders.get(order, "-created_at"))
 
-        return qs
 
-    def get_context_data(self, **kwargs):
-        ctx = super().get_context_data(**kwargs)
-        ctx["brands"] = Brand.objects.order_by("name")
-        ctx["categories"] = Category.objects.order_by("name")
-        return ctx
+def get_context_data(self, **kwargs):
+    ctx = super().get_context_data(**kwargs)
+
+    brands = cache.get("catalog_brands_ordered")
+    if brands is None:
+        brands_qs = Brand.objects.only("id", "name", "slug").order_by("name")
+        brands = list(brands_qs)
+        cache.set("catalog_brands_ordered", brands, 60 * 10)  # 10 minutes
+
+    categories = cache.get("catalog_categories_ordered")
+    if categories is None:
+        categories_qs = Category.objects.only("id", "name", "slug").order_by("name")
+        categories = list(categories_qs)
+        cache.set("catalog_categories_ordered", categories, 60 * 10)  # 10 minutes
+
+    # ✅ همیشه list باشند تا رفتار پایدار بماند
+    ctx["brands"] = list(brands)
+    ctx["categories"] = list(categories)
+    return ctx
 
 
 class ProductDetailView(DetailView):
     model = Product
     template_name = "catalog/product_detail.html"
     context_object_name = "product"
+
+    def get_queryset(self):
+        return (
+            Product.objects.select_related("brand", "collection", "category")
+            .prefetch_related("images", "variants")
+            .only(
+                "id",
+                "slug",
+                "title",
+                "description",
+                "price",
+                "brand__name",
+                "brand__slug",
+                "category__name",
+                "category__slug",
+                "collection__name",
+            )
+            .filter(is_active=True)
+        )
