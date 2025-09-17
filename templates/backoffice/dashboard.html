@@ -1,254 +1,158 @@
-{# templates/backoffice/dashboard.html #}
 {% extends "backoffice/base.html" %}
 {% load humanize %}
-{% block title %}Dashboard{% endblock %}
+{{ value|intcomma }}
+
+{% block title %}داشبورد{% endblock %}
+
 {% block content %}
+<section class="section pt-5">
+  <div class="container">
 
-<div class="columns is-multiline">
-  <div class="column is-one-third">
-    <div class="box has-text-centered">
-      <p class="heading">Sales Today</p>
-      <p class="title is-4">{{ sales_kpis.today|floatformat:0|intcomma }}</p>
-    </div>
-  </div>
-  <div class="column is-one-third">
-    <div class="box has-text-centered">
-      <p class="heading">Sales This Week</p>
-      <p class="title is-4">{{ sales_kpis.week|floatformat:0|intcomma }}</p>
-    </div>
-  </div>
-  <div class="column is-one-third">
-    <div class="box has-text-centered">
-      <p class="heading">Sales This Month</p>
-      <p class="title is-4">{{ sales_kpis.month|floatformat:0|intcomma }}</p>
-    </div>
-  </div>
+    <h1 class="title is-4">داشبورد مدیریتی</h1>
 
-  <div class="column is-one-third">
-    <div class="box has-text-centered">
-      <p class="heading">Orders Pending</p>
-      <p class="title is-4">{{ orders_counters.pending }}</p>
-    </div>
-  </div>
-  <div class="column is-one-third">
-    <div class="box has-text-centered">
-      <p class="heading">Orders Paid</p>
-      <p class="title is-4">{{ orders_counters.paid }}</p>
-    </div>
-  </div>
-  <div class="column is-one-third">
-    <div class="box has-text-centered">
-      <p class="heading">Orders Cancelled</p>
-      <p class="title is-4">{{ orders_counters.cancelled }}</p>
-    </div>
-  </div>
+    <!-- KPIs -->
+    <div class="columns is-multiline">
+      <!-- Sales KPIs -->
+      <div class="column is-3">
+        <div class="box has-text-centered">
+          <p class="heading">مجموع فروش</p>
+          <p class="title is-4">
+            {{ sales_kpis.total_revenue|floatformat:0|intcomma }}
+          </p>
+        </div>
+      </div>
+      <div class="column is-3">
+        <div class="box has-text-centered">
+          <p class="heading">تعداد سفارش‌ها</p>
+          <p class="title is-4">{{ sales_kpis.total_orders|intcomma }}</p>
+        </div>
+      </div>
+      <div class="column is-3">
+        <div class="box has-text-centered">
+          <p class="heading">میانگین ارزش سفارش</p>
+          <p class="title is-4">{{ sales_kpis.avg_order_value|floatformat:0|intcomma }}</p>
+        </div>
+      </div>
+      <div class="column is-3">
+        <div class="box has-text-centered">
+          <p class="heading">تعداد مشتریان</p>
+          <p class="title is-4">{{ sales_kpis.total_customers|intcomma }}</p>
+        </div>
+      </div>
 
-  <div class="column is-one-third">
-    <div class="box has-text-centered">
-      <p class="heading">New Users Today</p>
-      <p class="title is-4">{{ users_counters.new_today }}</p>
-    </div>
-  </div>
-  <div class="column is-one-third">
-    <div class="box has-text-centered">
-      <p class="heading">New Users This Month</p>
-      <p class="title is-4">{{ users_counters.new_month }}</p>
-    </div>
-  </div>
-</div>
+      <!-- Orders counters -->
+      <div class="column is-3">
+        <div class="box has-text-centered">
+          <p class="heading">سفارش‌های جدید</p>
+          <p class="title is-4">{{ orders_counters.new|intcomma }}</p>
+        </div>
+      </div>
+      <div class="column is-3">
+        <div class="box has-text-centered">
+          <p class="heading">سفارش‌های در حال پردازش</p>
+          <p class="title is-4">{{ orders_counters.processing|intcomma }}</p>
+        </div>
+      </div>
+      <div class="column is-3">
+        <div class="box has-text-centered">
+          <p class="heading">سفارش‌های تکمیل‌شده</p>
+          <p class="title is-4">{{ orders_counters.completed|intcomma }}</p>
+        </div>
+      </div>
 
-<div class="box mt-5">
-  <div class="level">
-    <div class="level-left">
-      <h2 class="title is-5 mb-0">Recent Orders</h2>
+      <!-- Users counters -->
+      <div class="column is-3">
+        <div class="box has-text-centered">
+          <p class="heading">کاربران جدید</p>
+          <p class="title is-4">{{ users_counters.new|intcomma }}</p>
+        </div>
+      </div>
+      <div class="column is-3">
+        <div class="box has-text-centered">
+          <p class="heading">کل کاربران</p>
+          <p class="title is-4">{{ users_counters.total|intcomma }}</p>
+        </div>
+      </div>
     </div>
-    {# If orders:list doesn't exist, change/remove this link #}
-    <div class="level-right">
-      <a class="button is-light is-small" href="{% url 'orders:list' %}">View all</a>
+
+    <!-- Chart -->
+    <div class="box">
+      <div class="level">
+        <div class="level-left">
+          <h2 class="title is-5 mb-0">نمودار فروش ۳۰ روز اخیر</h2>
+        </div>
+      </div>
+      <canvas id="salesChart" height="120"></canvas>
     </div>
-  </div>
 
-  <div class="table-container">
-    <table class="table is-fullwidth is-striped is-hoverable" aria-label="Recent orders">
-      <thead>
-        <tr>
-          <th>#</th>
-          <th>Customer</th>
-          <th>Items</th>
-          <th>Total</th>
-          <th>Status</th>
-          <th>Placed</th>
-          <th class="has-text-right">Actions</th>
-        </tr>
-      </thead>
-      <tbody>
-      {% for order in recent_orders %}
-        <tr id="order-row-{{ order.id }}">
-          <td><a href="{% url 'orders:detail' order.id %}">{{ order.number }}</a></td>
-
-          <td>
-            {% if order.customer and order.customer.user %}
-              {{ order.customer.user.get_full_name|default:order.customer.user.email }}
-            {% else %}
-              Guest
-            {% endif %}
-          </td>
-
-          <td>
-            {% for it in order.items.all|slice:":3" %}
-              <span class="tag is-light mb-1">{{ it.product.name|truncatechars:24 }}</span>
+    <!-- Recent Orders -->
+    <div class="box">
+      <div class="level">
+        <div class="level-left">
+          <h2 class="title is-5 mb-0">سفارش‌های اخیر</h2>
+        </div>
+      </div>
+      <div class="table-container">
+        <table class="table is-fullwidth is-striped is-hoverable">
+          <thead>
+            <tr>
+              <th>شماره</th>
+              <th>مشتری</th>
+              <th>تاریخ</th>
+              <th>مبلغ</th>
+              <th>وضعیت</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for o in recent_orders %}
+              <tr>
+                <td>{{ o.number }}</td>
+                <td>{{ o.customer }}</td>
+                <td>{{ o.placed_at|date:"Y-m-d H:i" }}</td>
+                <td>{{ o.grand_total|floatformat:0|intcomma }}</td>
+                <td>{{ o.get_status_display }}</td>
+              </tr>
             {% empty %}
-              <span class="has-text-grey">—</span>
+              <tr>
+                <td colspan="5" class="has-text-centered">سفارشی یافت نشد.</td>
+              </tr>
             {% endfor %}
-          </td>
-
-          <td>{{ order.grand_total|floatformat:2 }} {{ order.currency|default:"EUR" }}</td>
-
-          <td>
-            {% include "backoffice/partials/_order_status_badge.html" with status=order.status %}
-          </td>
-
-          <td>{{ order.placed_at|naturaltime }}</td>
-
-          <td class="has-text-right">
-            <form class="inline-status-form"
-                  action="{% url 'backoffice:set_status' order.id %}"
-                  method="post"
-                  data-order-id="{{ order.id }}">
-              {% csrf_token %}
-              <div class="field has-addons is-inline-block">
-                <p class="control">
-                  <span class="select is-small">
-                    <select name="status" aria-label="Change status">
-                      {% if order.STATUS_CHOICES %}
-                        {% for key,label in order.STATUS_CHOICES %}
-                          <option value="{{ key }}" {% if key == order.status %}selected{% endif %}>{{ label }}</option>
-                        {% endfor %}
-                      {% else %}
-                        <option value="pending"   {% if order.status == "pending" %}selected{% endif %}>Pending</option>
-                        <option value="paid"      {% if order.status == "paid" %}selected{% endif %}>Paid</option>
-                        <option value="processing"{% if order.status == "processing" %}selected{% endif %}>Processing</option>
-                        <option value="shipped"   {% if order.status == "shipped" %}selected{% endif %}>Shipped</option>
-                        <option value="delivered" {% if order.status == "delivered" %}selected{% endif %}>Delivered</option>
-                        <option value="canceled"  {% if order.status == "canceled" %}selected{% endif %}>Canceled</option>
-                      {% endif %}
-                    </select>
-                  </span>
-                </p>
-                <p class="control">
-                  <button type="submit" class="button is-small is-primary">Set</button>
-                </p>
-              </div>
-            </form>
-
-            <a class="button is-small is-white" href="{% url 'orders:detail' order.id %}">Details</a>
-          </td>
-        </tr>
-      {% empty %}
-        <tr><td colspan="7" class="has-text-centered has-text-grey">No recent orders.</td></tr>
-      {% endfor %}
-      </tbody>
-    </table>
-  </div>
-</div>
-
-<div class="box mt-5">
-  <div class="level">
-    <div class="level-left">
-      <h2 class="title is-5 mb-0">Sales (Last 30 days)</h2>
+          </tbody>
+        </table>
+      </div>
     </div>
-  </div>
-  <div style="height: 260px;">
-    <canvas id="salesChart"
-            role="img"
-            aria-label="Sales line chart"
-            data-sales-url="{{ sales_api_url }}"></canvas>
-  </div>
-  <p class="help">If the chart is empty, ensure Chart.js is loaded and the API returns labels &amp; datasets.</p>
-</div>
 
+  </div>
+</section>
 {% endblock %}
 
 {% block extra_js %}
-<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-<script>
-// Auto-submit on select change
-document.querySelectorAll(".inline-status-form select[name='status']").forEach(function(sel){
-  sel.addEventListener("change", function(){
-    this.form.requestSubmit();
-  });
-});
-
-// Inline status change (AJAX)
-document.querySelectorAll(".inline-status-form").forEach(function(form){
-  form.addEventListener("submit", async function(e){
-    e.preventDefault();
-    const orderId = form.dataset.orderId;
-    const url = form.getAttribute("action");
-    const formData = new FormData(form);
-
-    const btn = form.querySelector("button[type='submit']");
-    if (btn) btn.disabled = true;
-
-    try {
-      const resp = await fetch(url, {
-        method: "POST",
-        headers: { "X-Requested-With": "XMLHttpRequest" },
-        body: formData
+  {{ block.super }}
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <script>
+    fetch("{{ sales_api_url }}")
+      .then(resp => resp.json())
+      .then(data => {
+        const ctx = document.getElementById('salesChart');
+        new Chart(ctx, {
+          type: 'line',
+          data: {
+            labels: data.labels,
+            datasets: [
+              { label: 'مبلغ فروش', data: data.amounts, tension: 0.3, borderColor: '#3273dc' },
+              { label: 'تعداد سفارش', data: data.counts, tension: 0.3, borderColor: '#23d160' }
+            ]
+          },
+          options: {
+            responsive: true,
+            interaction: { mode: 'index', intersect: false },
+            plugins: {
+              legend: { display: true },
+              tooltip: { enabled: true }
+            },
+            scales: { y: { beginAtZero: true } }
+          }
+        });
       });
-      if (!resp.ok) throw new Error("Request failed");
-
-      const data = await resp.json();
-      if (data.ok) {
-        const row = document.getElementById(`order-row-${orderId}`);
-        const badgeCell = row.querySelector("td:nth-child(5)");
-        if (data.badge_html) {
-          badgeCell.innerHTML = data.badge_html;
-        }
-        row.classList.add("has-background-success-light");
-        setTimeout(()=>row.classList.remove("has-background-success-light"), 1200);
-      }
-    } catch (err) {
-      console.error(err);
-      alert("Failed to change status.");
-    } finally {
-      if (btn) btn.disabled = false;
-    }
-  });
-});
-
-// Sales chart hookup (Chart.js)
-(async function(){
-  const el = document.getElementById("salesChart");
-  if (!el || typeof Chart === "undefined") return;
-  const url = el.dataset.salesUrl;
-
-  try {
-    const resp = await fetch(url, { headers: { "X-Requested-With": "XMLHttpRequest" }});
-    if (!resp.ok) throw new Error("Chart API failed");
-    const payload = await resp.json();
-
-    new Chart(el.getContext("2d"), {
-      type: "line",
-      data: {
-        labels: payload.labels || [],
-        datasets: (payload.datasets || []).map(ds => ({
-          ...ds,
-          tension: 0.35,
-          fill: false,
-          pointRadius: 2,
-        })),
-      },
-      options: {
-        responsive: true,
-        maintainAspectRatio: false,
-        scales: { y: { beginAtZero: true } },
-        plugins: { legend: { display: true } }
-      }
-    });
-  } catch (e) {
-    console.error(e);
-  }
-})();
-</script>
+  </script>
 {% endblock %}

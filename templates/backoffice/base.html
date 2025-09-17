@@ -65,7 +65,7 @@
           <div class="buttons">
             {# اگر auth دارید: نام کاربر #}
             {% if request.user.is_authenticated %}
-              <span class="tag is-light is-medium">{{ request.user.get_full_name|default:request.user.username }}</span>
+              <span class="tag is-light is-medium">{{ request.user.get_full_name|default:request.user.get_username }}</span>
               {# مسیر خروج خودتان را جایگزین کنید #}
               <a class="button is-small is-light" href="{% url 'accounts:logout' %}">خروج</a>
             {% endif %}

@@ -1,6 +1,7 @@
 # config/urls.py
 from django.conf import settings
 from django.contrib import admin
+from django.contrib.auth.views import LogoutView
 from django.http import HttpResponse
 from django.urls import include, path
 from django.views.decorators.cache import cache_page
@@ -24,11 +25,12 @@ urlpatterns = [
     path("health/", healthcheck, name="health"),
     path("accounts/", include(("apps.accounts.urls", "accounts"), namespace="accounts")),
     path("payments/", include(("apps.payments.urls", "payments"), namespace="payments")),
-    path("backoffice/", include(("apps.backoffice.urls", "backoffice"), namespace="backoffice")),
-    path("products/", cached_product_list, name="product_list"),
-    path("home/", home, name="home"),
     path("", include(("apps.catalog.urls", "catalog"), namespace="catalog")),
     path("", include(("apps.orders.urls", "orders"), namespace="orders")),
+    path("", include(("apps.backoffice.urls", "backoffice"), namespace="backoffice")),
+    path("products/", cached_product_list, name="product_list"),
+    path("home/", home, name="home"),
+    path("logout/", LogoutView.as_view(next_page="accounts:login"), name="logout"),
 ]
 
 

@@ -50,6 +50,8 @@ INSTALLED_APPS = [
     "django.contrib.sessions",
     "django.contrib.messages",
     "django.contrib.staticfiles",
+    # برای humanize filterها (intcomma, naturaltime, floatformat ...)
+    "django.contrib.humanize",
     # 3rd-party
     "django_extensions",
     "widget_tweaks",

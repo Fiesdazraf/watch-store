@@ -1,3 +1,4 @@
+from django.contrib.auth.views import LogoutView
 from django.urls import path
 
 from .views import (
@@ -23,6 +24,7 @@ urlpatterns = [
     # Auth & profile
     path("register/", register_view, name="register"),
     path("login/", EmailLoginView.as_view(), name="login"),
+    path("logout/", LogoutView.as_view(next_page="accounts:login"), name="logout"),
     path("dashboard/", dashboard_view, name="dashboard"),
     path("profile/", profile_view, name="profile"),
     # Addresses

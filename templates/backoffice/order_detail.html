@@ -41,7 +41,7 @@
     <div class="box">
       <h2 class="title is-6">مشتری</h2>
       {% if order.user %}
-        <p><strong>نام:</strong> {{ order.user.get_full_name|default:order.user.username }}</p>
+        <p><strong>نام:</strong> {{ order.user.get_full_name|default:order.user.get_username }}</p>
         <p><strong>ایمیل:</strong> {{ order.user.email }}</p>
       {% else %}
         <p>مهمان</p>
