@@ -189,3 +189,15 @@ def user_factory(db, django_user_model):
         return django_user_model.objects.create_user(email=email, password=password, **extra)
 
     return make_user
+
+
+@pytest.fixture
+def staff_user(django_user_model):
+    user = django_user_model.objects.create_user(
+        **{
+            getattr(django_user_model, "USERNAME_FIELD", "username"): "staff@example.com",
+            "password": "x",
+            "is_staff": True,
+        }
+    )
+    return user

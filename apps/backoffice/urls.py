@@ -22,6 +22,7 @@ urlpatterns = [
     path("api/sales/", sales_api, name="sales_api"),
     path("reports/", reports_view, name="reports"),
     path("reports/export/csv/", export_sales_csv_view, name="reports_export_csv"),
+    path("export-sales-csv/", export_sales_csv_view, name="export_sales_csv"),
     path("orders/<int:order_id>/status/", set_status_redirect_view, name="set_status_redirect"),
     path("api/orders/<int:order_id>/status/", set_status_view, name="set_status"),
     path("logout/", LogoutView.as_view(next_page="accounts:login"), name="logout"),
