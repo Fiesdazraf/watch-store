@@ -2,16 +2,19 @@
 from __future__ import annotations
 
 from decimal import Decimal
+from typing import Any
 
 from django.apps import apps
 from django.contrib import messages
+from django.contrib.admin.views.decorators import staff_member_required
 from django.contrib.auth.decorators import login_required
 from django.core.exceptions import FieldDoesNotExist
 from django.core.paginator import Paginator
 from django.db import transaction
-from django.http import HttpRequest, HttpResponse
+from django.db.models import Count, Sum
+from django.http import HttpRequest, HttpResponse, JsonResponse
 from django.shortcuts import get_object_or_404, redirect, render
-from django.views.decorators.http import require_POST
+from django.views.decorators.http import require_GET, require_POST
 
 from apps.accounts.models import Address
 from apps.catalog.models import Product, ProductVariant
@@ -27,7 +30,13 @@ from .services import (
 )
 from .utils import send_order_confirmation_email
 
+try:
+    from .services import kpis as _kpis_service
+except Exception:
+    _kpis_service = None
 
+
+# ----------------------------- helpers -----------------------------
 def _parse_qty(value, default: int = 1, minimum: int = 1, maximum: int | None = None) -> int:
     try:
         qty = int(value)
@@ -109,7 +118,7 @@ def _address_qs_for_owner(*, user, customer):
     return AddressModel.objects.none()
 
 
-def _address_create_kwargs(*, user, customer) -> dict:
+def _address_create_kwargs(*, user, customer) -> dict[str, Any]:
     AddressModel = apps.get_model("accounts", "Address")
     if _model_has_field(AddressModel, "user"):
         return {"user": user}
@@ -124,7 +133,9 @@ def cart_detail(request: HttpRequest) -> HttpResponse:
     items = cart.items.select_related("product", "variant", "product__brand").order_by("-id")
     subtotal = cart_total(cart)
     return render(
-        request, "orders/cart_detail.html", {"cart": cart, "items": items, "subtotal": subtotal}
+        request,
+        "orders/cart_detail.html",
+        {"cart": cart, "items": items, "subtotal": subtotal},
     )
 
 
@@ -153,10 +164,13 @@ def update_cart_item(request: HttpRequest, item_id: int) -> HttpResponse:
     cart = _get_cart(request)
     item = get_object_or_404(CartItem, pk=item_id, cart=cart)
 
-    max_qty = max(1, getattr(item.variant, "stock", 0)) if item.variant else None
+    # Respect real stock (if variant has stock attribute)
+    stock = getattr(item.variant, "stock", None) if item.variant else None
+    max_qty = stock if (isinstance(stock, int) and stock >= 0) else None
+
     qty = _parse_qty(request.POST.get("qty", 1), minimum=0, maximum=max_qty)
 
-    if qty <= 0:
+    if (max_qty == 0) or (qty <= 0):
         item.delete()
         messages.info(request, "Item removed.")
     else:
@@ -176,19 +190,17 @@ def remove_cart_item(request: HttpRequest, item_id: int) -> HttpResponse:
     return redirect("orders:cart_detail")
 
 
+@require_POST
 @transaction.atomic
-def remove_from_cart_view(request, pk: int):
+def remove_from_cart_view(request: HttpRequest, pk: int) -> HttpResponse:
     """
     Remove a CartItem by primary key from the *current* cart (guest or user).
     Safe against tampering: only deletes if the item belongs to the active cart.
     """
     _merge_session_cart_into_user(request)
     cart = _get_cart(request)
-
-    # Limit deletion to items in the current cart
     item = get_object_or_404(CartItem, pk=pk, cart=cart)
     item.delete()
-
     messages.success(request, "Item removed from cart.")
     return redirect("orders:cart_detail")
 
@@ -228,6 +240,7 @@ def checkout_view(request: HttpRequest) -> HttpResponse:
     _merge_session_cart_into_user(request)
     cart = _get_cart(request)
 
+    # If no items on current cart but another user-cart has items, switch
     if not cart.items.exists() and request.user.is_authenticated:
         candidate = (
             Cart.objects.filter(user=request.user).prefetch_related("items").order_by("-id").first()
@@ -244,6 +257,7 @@ def checkout_view(request: HttpRequest) -> HttpResponse:
 
         customer, _ = Customer.objects.get_or_create(user=request.user)
 
+        # Address resolve / fallback
         address = form.cleaned_data.get("address") if (valid and form) else None
         if address is None:
             addr_qs = _address_qs_for_owner(user=request.user, customer=customer)
@@ -260,6 +274,7 @@ def checkout_view(request: HttpRequest) -> HttpResponse:
                     phone_number="0000000000",
                 )
 
+        # Shipping method resolve / fallback
         shipping_method = form.cleaned_data.get("shipping_method") if (valid and form) else None
         if shipping_method is None:
             shipping_method = (
@@ -276,6 +291,7 @@ def checkout_view(request: HttpRequest) -> HttpResponse:
             if hasattr(cart, "shipping_method"):
                 set_shipping_method(cart=cart, shipping_method=shipping_method)
 
+        # Payment method: validate against choices
         pm_input = (request.POST.get("payment_method") or "").strip()
         pm_field = Order._meta.get_field("payment_method")
         allowed_pm = {key for key, _ in pm_field.choices}
@@ -301,10 +317,12 @@ def checkout_view(request: HttpRequest) -> HttpResponse:
         try:
             send_order_confirmation_email(order)
         except Exception:
+            # ignore email failures in demo
             pass
 
         return redirect("payments:checkout", order_number=order.number)
 
+    # GET
     try:
         form = CheckoutForm(user=request.user)
     except Exception:
@@ -334,6 +352,72 @@ def payment_history_view(request: HttpRequest) -> HttpResponse:
     return render(request, "orders/payment_list.html", {"payments": payments})
 
 
+# ----------------------------- (Optional) Analytics APIs (guarded) -----------------------------
+@staff_member_required
+@require_GET
+def payments_breakdown_api(request: HttpRequest) -> JsonResponse:
+    """
+    Return {labels: [...], datasets: [{label, data: [...]}]}
+    Optional filters: ?start=YYYY-MM-DD&end=YYYY-MM-DD&status=paid|canceled|...
+    """
+    qs = Order.objects.all()
+    start = request.GET.get("start")
+    end = request.GET.get("end")
+    status = request.GET.get("status")
+
+    if start:
+        qs = qs.filter(placed_at__date__gte=start)
+    if end:
+        qs = qs.filter(placed_at__date__lte=end)
+    if status:
+        qs = qs.filter(status=status)
+
+    agg = (
+        qs.values("payment_method")
+        .annotate(count=Count("id"), total=Sum("grand_total"))
+        .order_by("-count")
+    )
+
+    labels = [row["payment_method"] or "—" for row in agg]
+    counts = [row["count"] for row in agg]
+    totals = [float(row["total"] or 0) for row in agg]
+
+    return JsonResponse(
+        {
+            "labels": labels,
+            "datasets": [
+                {"label": "Orders", "data": counts},
+                {"label": "Total Amount", "data": totals},
+            ],
+        }
+    )
+
+
+@staff_member_required
+@require_GET
+def orders_status_api(request: HttpRequest) -> JsonResponse:
+    """
+    Return status distribution (e.g., paid/pending/canceled/shipped/...).
+    Optional filters: ?start&end
+    """
+    qs = Order.objects.all()
+    start = request.GET.get("start")
+    end = request.GET.get("end")
+    if start:
+        qs = qs.filter(placed_at__date__gte=start)
+    if end:
+        qs = qs.filter(placed_at__date__lte=end)
+
+    agg = qs.values("status").annotate(count=Count("id")).order_by("-count")
+    labels = [row["status"] for row in agg]
+    values = [row["count"] for row in agg]
+
+    return JsonResponse(
+        {"labels": labels, "datasets": [{"label": "Orders by Status", "data": values}]}
+    )
+
+
+# ----------------------------- Thanks -----------------------------
 @login_required
 def order_thanks_view(request: HttpRequest, number: str) -> HttpResponse:
     order = get_object_or_404(

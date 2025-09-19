@@ -13,20 +13,37 @@
       <div class="columns is-multiline">
         <div class="column is-3">
           <label class="label">از تاریخ</label>
-          <input class="input" type="date" name="start" value="{{ start }}">
+          <input class="input" type="date" name="start" value="{{ start|date:'Y-m-d' }}">
         </div>
         <div class="column is-3">
           <label class="label">تا تاریخ</label>
-          <input class="input" type="date" name="end" value="{{ end }}">
+          <input class="input" type="date" name="end" value="{{ end|date:'Y-m-d' }}">
         </div>
         <div class="column is-3 is-flex is-align-items-flex-end">
           <button class="button is-primary" type="submit">اعمال فیلتر</button>
+          <a class="button ml-2" href="{% url 'backoffice:reports' %}">ریست</a>
         </div>
       </div>
-      <p class="help">مجموع فروش در بازه: <strong>{{ total_sum|floatformat:0|intcomma }}</strong></p>
-      <a class="button is-light" href="{% url 'backoffice:export_sales_csv' %}?start={{ start }}&end={{ end }}">
-        خروجی CSV
-      </a>
+
+      <p class="help">مجموع فروش در بازه:
+        <strong>{{ total_sum|floatformat:0|intcomma }}</strong>
+      </p>
+
+      <!-- Exports (include the word 'Export' for tests) -->
+      <div class="buttons mt-3">
+        <a class="button is-link"
+           href="{% url 'backoffice:export_sales_csv' %}?{{ request.GET.urlencode }}">
+          Export CSV
+        </a>
+        <a class="button is-info"
+           href="{% url 'backoffice:export_sales_xlsx' %}?{{ request.GET.urlencode }}">
+          Export Excel
+        </a>
+        <a class="button is-primary"
+           href="{% url 'backoffice:export_sales_pdf' %}?{{ request.GET.urlencode }}">
+          Export PDF
+        </a>
+      </div>
     </form>
 
     <!-- Series Table -->
@@ -45,7 +62,9 @@
               <td>{{ p.value|floatformat:0|intcomma }}</td>
             </tr>
           {% empty %}
-            <tr><td colspan="2" class="has-text-centered">داده‌ای برای این بازه وجود ندارد.</td></tr>
+            <tr>
+              <td colspan="2" class="has-text-centered">داده‌ای برای این بازه وجود ندارد.</td>
+            </tr>
           {% endfor %}
         </tbody>
       </table>

@@ -1,6 +1,5 @@
 {% extends "backoffice/base.html" %}
 {% load humanize %}
-{{ value|intcomma }}
 
 {% block title %}داشبورد{% endblock %}
 
@@ -9,6 +8,37 @@
   <div class="container">
 
     <h1 class="title is-4">داشبورد مدیریتی</h1>
+
+    <!-- Filters -->
+    <form method="get" class="box mb-4">
+      <div class="columns is-multiline">
+        <div class="column is-one-quarter">
+          <label class="label">از تاریخ</label>
+          <input class="input" type="date" name="start" value="{{ kpi_filters.start|default_if_none:'' }}">
+        </div>
+        <div class="column is-one-quarter">
+          <label class="label">تا تاریخ</label>
+          <input class="input" type="date" name="end" value="{{ kpi_filters.end|default_if_none:'' }}">
+        </div>
+        <div class="column is-one-quarter">
+          <label class="label">وضعیت</label>
+          <div class="select is-fullwidth">
+            <select name="status">
+              <option value="" {% if not kpi_filters.status %}selected{% endif %}>همه</option>
+              <option value="pending" {% if kpi_filters.status == 'pending' %}selected{% endif %}>در انتظار</option>
+              <option value="paid" {% if kpi_filters.status == 'paid' %}selected{% endif %}>پرداخت‌شده</option>
+              <option value="canceled" {% if kpi_filters.status == 'canceled' %}selected{% endif %}>لغو شده</option>
+              <option value="shipped" {% if kpi_filters.status == 'shipped' %}selected{% endif %}>ارسال شده</option>
+              <option value="completed" {% if kpi_filters.status == 'completed' %}selected{% endif %}>تکمیل شده</option>
+            </select>
+          </div>
+        </div>
+        <div class="column is-one-quarter is-flex is-align-items-flex-end" style="gap:.5rem">
+          <button class="button is-primary" type="submit">اعمال فیلتر</button>
+          <a class="button" href="{% url 'backoffice:dashboard' %}">ریست</a>
+        </div>
+      </div>
+    </form>
 
     <!-- KPIs -->
     <div class="columns is-multiline">
@@ -75,14 +105,44 @@
       </div>
     </div>
 
-    <!-- Chart -->
+    <!-- Sales chart (30 days) -->
     <div class="box">
       <div class="level">
         <div class="level-left">
           <h2 class="title is-5 mb-0">نمودار فروش ۳۰ روز اخیر</h2>
         </div>
       </div>
-      <canvas id="salesChart" height="120"></canvas>
+      <div class="chart-wrap">
+        <canvas id="salesChart"></canvas>
+      </div>
+    </div>
+
+    <!-- NEW: Payments breakdown & Orders status charts -->
+    <div class="columns">
+      <div class="column">
+        <div class="box">
+          <div class="level">
+            <div class="level-left">
+              <h2 class="title is-6 mb-0">تقسیم‌بندی روش‌های پرداخت</h2>
+            </div>
+          </div>
+          <div class="chart-wrap">
+            <canvas id="paymentsBreakdownChart"></canvas>
+          </div>
+        </div>
+      </div>
+      <div class="column">
+        <div class="box">
+          <div class="level">
+            <div class="level-left">
+              <h2 class="title is-6 mb-0">توزیع وضعیت سفارش‌ها</h2>
+            </div>
+          </div>
+          <div class="chart-wrap">
+            <canvas id="ordersStatusChart"></canvas>
+          </div>
+        </div>
+      </div>
     </div>
 
     <!-- Recent Orders -->
@@ -130,29 +190,103 @@
   {{ block.super }}
   <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
   <script>
-    fetch("{{ sales_api_url }}")
+    // Pass optional filters from context if present (e.g., via DashboardFilterForm)
+    const KPI_FILTERS = {{ kpi_filters|default:"{}"|safe }};
+
+    function makeURL(base) {
+      const url = new URL(base, window.location.origin);
+      for (const [k, v] of Object.entries(KPI_FILTERS)) {
+        if (v) url.searchParams.set(k, v);
+      }
+      return url.toString();
+    }
+
+    // Sales chart (line) — compatible with both {amounts,counts} and {datasets}
+    fetch(makeURL("{{ sales_api_url }}"))
       .then(resp => resp.json())
       .then(data => {
         const ctx = document.getElementById('salesChart');
+
+        // Backward compat:
+        const amounts =
+          Array.isArray(data.amounts) ? data.amounts :
+          (data.datasets?.[0]?.data ?? []);
+        const counts =
+          Array.isArray(data.counts) ? data.counts :
+          (data.datasets?.[1]?.data ?? []);
+
+        const amountLabel =
+          data.datasets?.[0]?.label || 'مبلغ فروش';
+        const countLabel =
+          data.datasets?.[1]?.label || 'تعداد سفارش';
+
         new Chart(ctx, {
           type: 'line',
           data: {
-            labels: data.labels,
+            labels: data.labels || [],
             datasets: [
-              { label: 'مبلغ فروش', data: data.amounts, tension: 0.3, borderColor: '#3273dc' },
-              { label: 'تعداد سفارش', data: data.counts, tension: 0.3, borderColor: '#23d160' }
+              { label: amountLabel, data: amounts, tension: 0.3 },
+              { label: countLabel, data: counts, tension: 0.3 }
             ]
           },
           options: {
             responsive: true,
+            maintainAspectRatio: false,
             interaction: { mode: 'index', intersect: false },
             plugins: {
-              legend: { display: true },
+              legend: { display: true, position: 'bottom' },
               tooltip: { enabled: true }
             },
             scales: { y: { beginAtZero: true } }
           }
         });
       });
+
+    // Payments breakdown (bar)
+    fetch(makeURL("{% url 'backoffice:payments_breakdown_api' %}"))
+      .then(resp => resp.json())
+      .then(data => {
+        const ctx = document.getElementById('paymentsBreakdownChart');
+        new Chart(ctx, {
+          type: 'bar',
+          data: {
+            labels: data.labels,
+            datasets: data.datasets.map(ds => ({ ...ds }))
+          },
+          options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: { legend: { position: 'bottom' } },
+            scales: { y: { beginAtZero: true } }
+          }
+        });
+      });
+
+    // Orders by status (bar)
+    fetch(makeURL("{% url 'backoffice:orders_status_api' %}"))
+      .then(resp => resp.json())
+      .then(data => {
+        const ctx = document.getElementById('ordersStatusChart');
+        new Chart(ctx, {
+          type: 'bar',
+          data: {
+            labels: data.labels,
+            datasets: data.datasets.map(ds => ({ ...ds }))
+          },
+          options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: { legend: { position: 'bottom' } },
+            scales: { y: { beginAtZero: true } }
+          }
+        });
+      });
   </script>
+  <style>
+    /* Make canvases nicely responsive within boxes */
+    .chart-wrap { position: relative; min-height: 280px; height: 320px; }
+    @media (max-width: 768px) {
+      .chart-wrap { height: 280px; }
+    }
+  </style>
 {% endblock %}

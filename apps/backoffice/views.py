@@ -1,20 +1,15 @@
 from __future__ import annotations
 
 import csv
+import io
 from collections.abc import Iterable
-from datetime import date, datetime
+from datetime import date, datetime, timedelta
 from typing import Any
 
 from django.contrib import messages
-from django.contrib.admin.views.decorators import staff_member_required
 from django.core.exceptions import FieldDoesNotExist
-from django.db.models import Prefetch
-from django.http import (
-    HttpRequest,
-    HttpResponse,
-    HttpResponseBadRequest,
-    JsonResponse,
-)
+from django.db.models import Count, Prefetch, Sum
+from django.http import HttpRequest, HttpResponse, HttpResponseBadRequest, JsonResponse
 from django.shortcuts import get_object_or_404, redirect, render
 from django.template.loader import render_to_string
 from django.urls import reverse
@@ -30,12 +25,20 @@ from apps.orders.services import (
 )
 
 from .permissions import staff_required
-from .services import kpis
+
+# services.kpis را طوری ایمپورت می‌کنیم که اگر در دسترس نبود، باز هم ماژول لود شود
+try:
+    from .services import kpis as _kpis_service
+except Exception:
+    _kpis_service = None  # type: ignore[assignment]
+
+# Optional deps
+from openpyxl import Workbook
+from reportlab.lib.pagesizes import A4
+from reportlab.pdfgen import canvas
 
 
-# -----------------------------
-# Small helpers
-# -----------------------------
+# ----------------------------- helpers -----------------------------
 def _detect_key(
     d: dict[str, Any], candidates: tuple[str, ...], default: str | None = None
 ) -> str | None:
@@ -61,46 +64,80 @@ def _parse_date_range_from_request(
 ) -> tuple[date, date]:
     start = _parse_yyyy_mm_dd(request.GET.get("start")) or default_start
     end = _parse_yyyy_mm_dd(request.GET.get("end")) or default_end
-    # normalize (swap) if user sent reversed range
-    if start > end:
+    if start > end:  # normalize (swap)
         start, end = end, start
     return start, end
 
 
-# -----------------------------
-# Health
-# -----------------------------
+def _allowed_status_values(order: Order) -> list[str]:
+    """
+    Priority:
+    1) Field 'status'.choices
+    2) Order.Status enum
+    3) STATUS_CHOICES legacy
+    """
+    try:
+        field = order._meta.get_field("status")
+        choices: Iterable[tuple[str, str]] | None = getattr(field, "choices", None)  # type: ignore[assignment]
+        if choices:
+            return [c[0] for c in choices]
+    except FieldDoesNotExist:
+        pass
+
+    StatusEnum = getattr(order.__class__, "Status", None)
+    if StatusEnum is not None:
+        vals: list[str] = []
+        for name in dir(StatusEnum):
+            if name.startswith("_"):
+                continue
+            val = getattr(StatusEnum, name)
+            if isinstance(val, (str, int)):
+                vals.append(str(val))
+        if vals:
+            return vals
+
+    if hasattr(order, "STATUS_CHOICES"):
+        try:
+            return [c[0] for c in order.STATUS_CHOICES]  # type: ignore[attr-defined]
+        except Exception:
+            pass
+
+    return []
+
+
+# ----------------------------- Health -----------------------------
 @require_GET
 def health(_: HttpRequest) -> HttpResponse:
     return HttpResponse("ok")
 
 
-# -----------------------------
-# Dashboard
-# -----------------------------
+# ----------------------------- Dashboard -----------------------------
 @staff_required
 @require_GET
 def dashboard_view(request: HttpRequest) -> HttpResponse:
-    # NOTE: Prefetch with slicing is not allowed → slice only on the main queryset.
+    start = request.GET.get("start") or ""
+    end = request.GET.get("end") or ""
+    status = request.GET.get("status") or ""
+
     recent_orders = (
         Order.objects.select_related("customer", "customer__user")
-        .prefetch_related(
-            Prefetch(
-                "items",
-                queryset=OrderItem.objects.select_related("product"),
-            )
-        )
+        .prefetch_related(Prefetch("items", queryset=OrderItem.objects.select_related("product")))
         .order_by("-placed_at")[:10]
     )
+
+    sales_kpis = get_sales_kpis()
+    orders_counters = get_orders_counters()
+    users_counters = get_users_counters()
 
     context = {
         "recent_orders": recent_orders,
         "sales_api_url": request.build_absolute_uri(reverse("backoffice:sales_api")),
         "set_status_url_name": "backoffice:set_status",
-        "sales_kpis": get_sales_kpis(),
-        "orders_counters": get_orders_counters(),
-        "users_counters": get_users_counters(),
+        "sales_kpis": sales_kpis,
+        "orders_counters": orders_counters,
+        "users_counters": users_counters,
         "now": timezone.now(),
+        "kpi_filters": {"start": start, "end": end, "status": status},
     }
     return render(request, "backoffice/dashboard.html", context)
 
@@ -108,13 +145,26 @@ def dashboard_view(request: HttpRequest) -> HttpResponse:
 @staff_required
 @require_GET
 def kpis_api(_: HttpRequest) -> JsonResponse:
-    return JsonResponse(kpis())
+    """
+    Returns aggregated KPIs for the dashboard.
+    Falls back to local composition if services.kpis is unavailable.
+    """
+    if callable(_kpis_service):
+        try:
+            return JsonResponse(_kpis_service())
+        except Exception:
+            pass  # fallback below
+
+    data = {
+        "sales_kpis": get_sales_kpis(),
+        "orders_counters": get_orders_counters(),
+        "users_counters": get_users_counters(),
+    }
+    return JsonResponse(data)
 
 
-# -----------------------------
-# Sales API (Chart.js payload)
-# -----------------------------
-@staff_member_required
+# ----------------------------- Sales API (Chart.js payload) -----------------------------
+@staff_required
 @require_GET
 def sales_api(request: HttpRequest) -> JsonResponse:
     """
@@ -124,10 +174,12 @@ def sales_api(request: HttpRequest) -> JsonResponse:
       "datasets": [
         {"label": "Revenue (€)", "data": [...]},
         {"label": "Orders", "data": [...]}
-      ]
+      ],
+      // backward-compat:
+      "amounts": [...],
+      "counts": [...]
     }
     """
-    # Guard & clamp 'days' (reasonable bounds to avoid heavy queries)
     try:
         days = int(request.GET.get("days", "30"))
     except ValueError:
@@ -135,10 +187,9 @@ def sales_api(request: HttpRequest) -> JsonResponse:
     days = max(1, min(days, 365))
 
     end = timezone.localdate()
-    start = end - timezone.timedelta(days=days - 1)
+    start = end - timedelta(days=days - 1)
     series: list[dict[str, Any]] = get_sales_timeseries_by_day(start, end) or []
 
-    # empty but valid
     if not series:
         return JsonResponse(
             {
@@ -147,10 +198,11 @@ def sales_api(request: HttpRequest) -> JsonResponse:
                     {"label": "Revenue (€)", "data": []},
                     {"label": "Orders", "data": []},
                 ],
+                "amounts": [],
+                "counts": [],
             }
         )
 
-    # dynamic keys (date/label), (revenue/amount/total), (orders/count/…)
     first = series[0]
     date_key = _detect_key(first, ("date", "day", "label"))
     revenue_key = _detect_key(first, ("revenue", "total", "amount", "sum"))
@@ -163,14 +215,12 @@ def sales_api(request: HttpRequest) -> JsonResponse:
     for row in series:
         labels.append(str(row.get(date_key, "")) if date_key else "")
 
-        # revenue → float
         rev = row.get(revenue_key, 0) if revenue_key else 0
         try:
             revenue_data.append(float(rev))
         except Exception:
             revenue_data.append(0.0)
 
-        # orders → int (safe cast)
         cnt = row.get(orders_key, 0) if orders_key else 0
         try:
             orders_data.append(int(cnt))
@@ -186,16 +236,17 @@ def sales_api(request: HttpRequest) -> JsonResponse:
             {"label": "Revenue (€)", "data": revenue_data},
             {"label": "Orders", "data": orders_data},
         ],
+        # backward-compat for older frontend
+        "amounts": revenue_data,
+        "counts": orders_data,
     }
     return JsonResponse(payload)
 
 
-# -----------------------------
-# Status change (non-AJAX redirect)
-# -----------------------------
+# ----------------------------- Status change -----------------------------
 @staff_required
 @require_POST
-def set_status_redirect_view(request: HttpRequest, order_id: int):
+def set_status_redirect_view(request: HttpRequest, order_id: int) -> HttpResponse:
     order = get_object_or_404(Order, pk=order_id)
     new_status = request.POST.get("status")
     if not new_status:
@@ -219,60 +270,13 @@ def set_status_redirect_view(request: HttpRequest, order_id: int):
                 to_status=new_status,
             )
         except Exception:
-            # logging here (optional)
             pass
 
-    messages.success(
-        request,
-        f"Order {getattr(order, 'number', order.pk)} status → {new_status}",
-    )
+    messages.success(request, f"Order {getattr(order, 'number', order.pk)} status → {new_status}")
     return redirect("backoffice:dashboard")
 
 
-def _allowed_status_values(order: Order) -> list[str]:
-    """
-    Priority:
-    1) Field 'status'.choices
-    2) Order.Status enum
-    3) STATUS_CHOICES legacy
-    """
-    # 1) choices on field
-    try:
-        field = order._meta.get_field("status")
-        choices: Iterable[tuple[str, str]] | None = getattr(field, "choices", None)  # type: ignore[assignment]
-        if choices:
-            return [c[0] for c in choices]
-    except FieldDoesNotExist:
-        pass
-
-    # 2) inner Enum
-    StatusEnum = getattr(order.__class__, "Status", None)
-    if StatusEnum is not None:
-        vals: list[str] = []
-        for name in dir(StatusEnum):
-            if name.startswith("_"):
-                continue
-            val = getattr(StatusEnum, name)
-            if isinstance(val, (str, int)):
-                vals.append(str(val))
-        if vals:
-            return vals
-
-    # 3) legacy STATUS_CHOICES
-    if hasattr(order, "STATUS_CHOICES"):
-        try:
-            return [c[0] for c in order.STATUS_CHOICES]  # type: ignore[attr-defined]
-        except Exception:
-            pass
-
-    # 4) no explicit restriction
-    return []
-
-
-# -----------------------------
-# Status change (AJAX)
-# -----------------------------
-@staff_member_required
+@staff_required
 @require_POST
 def set_status_view(request: HttpRequest, order_id: int) -> JsonResponse:
     order = get_object_or_404(Order, pk=order_id)
@@ -296,7 +300,6 @@ def set_status_view(request: HttpRequest, order_id: int) -> JsonResponse:
                 to_status=new_status,
             )
         except Exception:
-            # optional: log
             pass
 
     badge_html = render_to_string(
@@ -309,10 +312,8 @@ def set_status_view(request: HttpRequest, order_id: int) -> JsonResponse:
     )
 
 
-# -----------------------------
-# Reports & CSV export
-# -----------------------------
-@staff_member_required
+# ----------------------------- Reports & CSV export -----------------------------
+@staff_required
 @require_GET
 def reports_view(request: HttpRequest) -> HttpResponse:
     today = timezone.localdate()
@@ -322,7 +323,6 @@ def reports_view(request: HttpRequest) -> HttpResponse:
     start, end = _parse_date_range_from_request(request, default_start, default_end)
     series: list[dict[str, Any]] = get_sales_timeseries_by_day(start, end) or []
 
-    # series items expected to have {"label": "...", "value": number}
     total_sum = 0.0
     for p in series:
         try:
@@ -330,16 +330,11 @@ def reports_view(request: HttpRequest) -> HttpResponse:
         except Exception:
             pass
 
-    context = {
-        "start": start,
-        "end": end,
-        "series": series,
-        "total_sum": total_sum,
-    }
+    context = {"start": start, "end": end, "series": series, "total_sum": total_sum}
     return render(request, "backoffice/reports.html", context)
 
 
-@staff_member_required
+@staff_required
 @require_GET
 def export_sales_csv_view(request: HttpRequest) -> HttpResponse:
     today = timezone.localdate()
@@ -352,7 +347,6 @@ def export_sales_csv_view(request: HttpRequest) -> HttpResponse:
     resp = HttpResponse(content_type="text/csv; charset=utf-8")
     resp["Content-Disposition"] = f'attachment; filename="sales_{start}_to_{end}.csv"'
 
-    # Explicit lineterminator avoids double newlines on Windows
     writer = csv.writer(resp, lineterminator="\n")
     writer.writerow(["date", "sales"])
     for p in series:
@@ -362,5 +356,162 @@ def export_sales_csv_view(request: HttpRequest) -> HttpResponse:
         except Exception:
             val = 0.0
         writer.writerow([label, f"{val:.2f}"])
-
     return resp
+
+
+# ----------------------------- XLSX / PDF Exports -----------------------------
+@staff_required
+@require_GET
+def export_sales_xlsx_view(request: HttpRequest) -> HttpResponse:
+    qs = Order.objects.select_related("customer").all()
+    start = request.GET.get("start")
+    end = request.GET.get("end")
+    status = request.GET.get("status")
+    if start:
+        qs = qs.filter(placed_at__date__gte=start)
+    if end:
+        qs = qs.filter(placed_at__date__lte=end)
+    if status:
+        qs = qs.filter(status=status)
+
+    wb = Workbook()
+    ws = wb.active
+    ws.title = "Sales"
+    ws.append(["ID", "Number", "Customer", "Status", "Grand Total", "Placed At"])
+
+    for o in qs.order_by("-placed_at"):
+        ws.append(
+            [
+                o.id,
+                o.number,
+                getattr(o.customer, "email", "") if o.customer_id else "",
+                o.status,
+                float(o.grand_total or 0),
+                o.placed_at.strftime("%Y-%m-%d %H:%M"),
+            ]
+        )
+
+    buf = io.BytesIO()
+    wb.save(buf)
+    buf.seek(0)
+
+    resp = HttpResponse(
+        buf.getvalue(),
+        content_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+    )
+    resp["Content-Disposition"] = (
+        f'attachment; filename="sales_{start or "all"}_{end or "all"}.xlsx"'
+    )
+    return resp
+
+
+@staff_required
+@require_GET
+def export_sales_pdf_view(request: HttpRequest) -> HttpResponse:
+    qs = Order.objects.all()
+    start = request.GET.get("start")
+    end = request.GET.get("end")
+    if start:
+        qs = qs.filter(placed_at__date__gte=start)
+    if end:
+        qs = qs.filter(placed_at__date__lte=end)
+
+    buf = io.BytesIO()
+    c = canvas.Canvas(buf, pagesize=A4)
+    width, height = A4
+
+    y = height - 50
+    c.setFont("Helvetica-Bold", 12)
+    c.drawString(40, y, "Sales Report")
+    y -= 20
+    c.setFont("Helvetica", 10)
+    c.drawString(40, y, f"Range: {start or '—'} to {end or '—'}")
+    y -= 30
+
+    headers = ["#", "Number", "Status", "Total", "Placed At"]
+    x_positions = [40, 90, 220, 300, 360]
+    for i, h in enumerate(headers):
+        c.drawString(x_positions[i], y, h)
+    y -= 15
+    c.line(40, y, width - 40, y)
+    y -= 10
+
+    for o in qs.order_by("-placed_at")[:500]:
+        row = [
+            str(o.id),
+            o.number,
+            o.status,
+            f"{o.grand_total}",
+            o.placed_at.strftime("%Y-%m-%d %H:%M"),
+        ]
+        if y < 60:
+            c.showPage()
+            y = height - 50
+        for i, col in enumerate(row):
+            c.drawString(x_positions[i], y, col)
+        y -= 15
+
+    c.save()
+    pdf = buf.getvalue()
+    buf.close()
+    resp = HttpResponse(pdf, content_type="application/pdf")
+    resp["Content-Disposition"] = (
+        f'attachment; filename="sales_{start or "all"}_{end or "all"}.pdf"'
+    )
+    return resp
+
+
+# ----------------------------- Extra Chart APIs -----------------------------
+@staff_required
+@require_GET
+def payments_breakdown_api(request: HttpRequest) -> JsonResponse:
+    qs = Order.objects.all()
+    start = request.GET.get("start")
+    end = request.GET.get("end")
+    status = request.GET.get("status")
+
+    if start:
+        qs = qs.filter(placed_at__date__gte=start)
+    if end:
+        qs = qs.filter(placed_at__date__lte=end)
+    if status:
+        qs = qs.filter(status=status)
+
+    agg = (
+        qs.values("payment_method")
+        .annotate(count=Count("id"), total=Sum("grand_total"))
+        .order_by("-count")
+    )
+    labels = [row["payment_method"] or "—" for row in agg]
+    counts = [row["count"] for row in agg]
+    totals = [float(row["total"] or 0) for row in agg]
+
+    return JsonResponse(
+        {
+            "labels": labels,
+            "datasets": [
+                {"label": "Orders", "data": counts},
+                {"label": "Total Amount", "data": totals},
+            ],
+        }
+    )
+
+
+@staff_required
+@require_GET
+def orders_status_api(request: HttpRequest) -> JsonResponse:
+    qs = Order.objects.all()
+    start = request.GET.get("start")
+    end = request.GET.get("end")
+    if start:
+        qs = qs.filter(placed_at__date__gte=start)
+    if end:
+        qs = qs.filter(placed_at__date__lte=end)
+
+    agg = qs.values("status").annotate(count=Count("id")).order_by("-count")
+    labels = [row["status"] for row in agg]
+    values = [row["count"] for row in agg]
+
+    return JsonResponse(
+        {"labels": labels, "datasets": [{"label": "Orders by Status", "data": values}]}
+    )
