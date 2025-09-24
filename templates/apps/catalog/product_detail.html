@@ -1,0 +1,248 @@
+{% extends "base.html" %}
+{% load static humanize %}
+{% block title %}{{ product.title }} | فروشگاه{% endblock %}
+
+{% block content %}
+<section class="section pt-5">
+  <div class="container">
+    <!-- Breadcrumb -->
+    <nav class="breadcrumb is-small has-succeeds-separator" aria-label="breadcrumbs">
+      <ul>
+        <li><a href="{% url 'catalog:product_list' %}">فروشگاه</a></li>
+        {% if product.category %}
+          <li><a href="{% url 'catalog:product_list' %}?category={{ product.category.slug }}">{{ product.category.name }}</a></li>
+        {% elif product.brand %}
+          <li><a href="{% url 'catalog:product_list' %}?brand={{ product.brand.slug }}">{{ product.brand.name }}</a></li>
+        {% endif %}
+        <li class="is-active"><a aria-current="page">{{ product.title }}</a></li>
+      </ul>
+    </nav>
+
+    <div class="columns is-variable is-6">
+      <!-- Gallery -->
+      <div class="column is-5">
+        <figure class="image is-3by2">
+          {% if product.primary_image %}
+            <img id="main-image" src="{{ product.primary_image.url }}" alt="{{ product.title }}" loading="lazy">
+          {% else %}
+            <img id="main-image" src="{% static 'shop/placeholder-800x533.png' %}" alt="{{ product.title }}" loading="lazy">
+          {% endif %}
+        </figure>
+
+        {% with imgs=product.images.all|slice:":6" %}
+        {% if imgs %}
+          <div class="columns is-mobile is-multiline mt-3" role="list" aria-label="تصاویر محصول">
+            {% for img in imgs %}
+              <div class="column is-one-quarter" role="listitem">
+                <button class="thumb-btn" type="button" aria-label="نمایش تصویر {{ forloop.counter }}">
+                  <figure class="image is-1by1">
+                    <img class="thumb-img" src="{{ img.image.url }}" data-full="{{ img.image.url }}" alt="{{ product.title }}" loading="lazy">
+                  </figure>
+                </button>
+              </div>
+            {% endfor %}
+          </div>
+        {% endif %}
+        {% endwith %}
+      </div>
+
+      <!-- Info + Buy box -->
+      <div class="column is-7">
+        <h1 class="title is-3">{{ product.title }}</h1>
+
+        {% if product.brand %}
+          <p class="mb-2"><strong>برند:</strong> {{ product.brand.name }}</p>
+        {% endif %}
+
+        <!-- Price -->
+        <div class="mb-3">
+          {% if product.discounted_price %}
+            <p class="title is-4 has-text-danger">{{ product.discounted_price|intcomma }} تومان
+              <span class="is-size-6 has-text-grey-light" style="text-decoration:line-through">
+                {{ product.price|intcomma }} تومان
+              </span>
+            </p>
+          {% else %}
+            <p class="title is-4">{{ product.price|intcomma }} تومان</p>
+          {% endif %}
+        </div>
+
+        <!-- Stock status -->
+        <p class="mb-3">
+          {% if has_variants %}
+            {% if total_stock > 5 %}
+              <span class="tag is-success">موجود</span>
+              <small class="has-text-grey ml-2">در انبار: {{ total_stock }}</small>
+            {% elif total_stock > 0 %}
+              <span class="tag is-warning">موجود (کمی)</span>
+              <small class="has-text-grey ml-2">در انبار: {{ total_stock }}</small>
+            {% else %}
+              <span class="tag is-danger">ناموجود</span>
+            {% endif %}
+          {% else %}
+            {% if product.is_active %}
+              <span class="tag is-success">موجود</span>
+            {% else %}
+              <span class="tag is-danger">ناموجود</span>
+            {% endif %}
+          {% endif %}
+        </p>
+
+        {% if product.short_description %}
+          <div class="content mb-4">{{ product.short_description|linebreaks }}</div>
+        {% endif %}
+
+        <div class="box">
+          <form action="{% url 'orders:add_to_cart' product.id %}" method="post" id="add-to-cart-form">
+            {% csrf_token %}
+
+            {% if has_variants %}
+              <div class="field">
+                <label class="label" for="variant_id">انتخاب تنوع</label>
+                <div class="control">
+                  <div class="select is-fullwidth">
+                    <select id="variant_id" name="variant_id" required>
+                      {% for v in product.variants.all %}
+                        <option value="{{ v.id }}" data-stock="{{ v.stock|default:0 }}" {% if v.stock|default:0 == 0 %}disabled{% endif %}>
+                          {{ v.attribute }}: {{ v.value }} {% if v.extra_price %}(+{{ v.extra_price|intcomma }}){% endif %}
+                          {% if v.stock|default:0 == 0 %} — ناموجود{% endif %}
+                        </option>
+                      {% endfor %}
+                    </select>
+                  </div>
+                </div>
+                <p class="help">لطفاً تنوع مورد نظر را انتخاب کنید.</p>
+              </div>
+            {% endif %}
+
+            <div class="field is-grouped is-align-items-center">
+              <div class="control">
+                <label class="label is-sr-only" for="qty">تعداد</label>
+                <input class="input" id="qty" name="qty" type="number" min="1" value="1" style="width:110px;">
+              </div>
+
+              <div class="control">
+                <button id="add-to-cart-btn" class="button is-primary" type="submit" {% if not product.is_active %}disabled{% endif %}>
+                  {% if product.is_active %}افزودن به سبد{% else %}ناموجود{% endif %}
+                </button>
+              </div>
+            </div>
+          </form>
+        </div>
+
+        <!-- Tabs -->
+        <div class="box mt-6">
+          <div class="tabs is-toggle is-fullwidth" id="pdp-tabs" role="tablist">
+            <ul>
+              <li class="is-active" data-target="tab-desc" role="presentation"><a role="tab" aria-selected="true">توضیحات</a></li>
+              <li data-target="tab-specs" role="presentation"><a role="tab">مشخصات</a></li>
+              <li data-target="tab-reviews" role="presentation"><a role="tab">نظرات</a></li>
+            </ul>
+          </div>
+
+          <div id="tab-desc" class="pdp-tab-panel">
+            <h3 class="title is-5">توضیحات</h3>
+            <div class="content">{{ product.description|linebreaks }}</div>
+          </div>
+
+          <div id="tab-specs" class="pdp-tab-panel is-hidden" hidden>
+            {% include "catalog/_product_specs.html" %}
+          </div>
+
+          <div id="tab-reviews" class="pdp-tab-panel is-hidden" hidden>
+            <h3 class="title is-5">نظرات مشتریان</h3>
+            <div class="content">
+              <p>هنوز نظری ثبت نشده — این بخش آمادهٔ اتصال به سیستم نظرات است.</p>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Related products -->
+    {% include "catalog/_related_products.html" with related_products=related_products %}
+
+  </div>
+</section>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+  // Gallery thumbnails
+  (function () {
+    const main = document.getElementById('main-image');
+    const thumbs = document.querySelectorAll('.thumb-img');
+    thumbs.forEach(img => {
+      img.addEventListener('click', () => {
+        const url = img.dataset.full || img.src;
+        if (main && url) main.src = url;
+        // focus/outline
+        thumbs.forEach(t => t.style.outline = 'none');
+        img.style.outline = '2px solid var(--bulma-primary, #00d1b2)';
+      });
+    });
+  })();
+
+  // Tabs
+  (function () {
+    const tabs = document.querySelectorAll('#pdp-tabs ul li');
+    const panels = document.querySelectorAll('.pdp-tab-panel');
+    tabs.forEach(tab => {
+      tab.addEventListener('click', () => {
+        tabs.forEach(t => t.classList.remove('is-active'));
+        tab.classList.add('is-active');
+        const target = tab.getAttribute('data-target');
+        panels.forEach(p => {
+          if (p.id === target) {
+            p.classList.remove('is-hidden');
+            p.removeAttribute('hidden');
+          } else {
+            p.classList.add('is-hidden');
+            p.setAttribute('hidden', 'true');
+          }
+        });
+      });
+    });
+  })();
+
+  // Variant stock guard
+  (function () {
+    const select = document.getElementById('variant_id');
+    const btn = document.getElementById('add-to-cart-btn');
+    if (!select || !btn) return;
+    const update = () => {
+      const opt = select.options[select.selectedIndex];
+      const stock = parseInt(opt?.dataset?.stock || '0', 10);
+      if (Number.isFinite(stock) && stock <= 0) {
+        btn.disabled = true;
+        btn.textContent = 'ناموجود';
+      } else {
+        btn.disabled = false;
+        btn.textContent = 'افزودن به سبد';
+      }
+    };
+    select.addEventListener('change', update);
+    update();
+  })();
+</script>
+
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@type": "Product",
+  "name": {{ product.title|escapejs|safe }},
+  "image": [
+    {% if product.primary_image %}"{{ product.primary_image.url }}"{% endif %}{% for img in product.images.all|slice:":6" %}{% if forloop.first and product.primary_image %}, {% endif %}"{{ img.image.url }}"{% if not forloop.last %}, {% endif %}{% endfor %}
+  ],
+  "description": {{ product.short_description|default:product.description|default_if_none:""|striptags|truncatechars:300|escapejs|safe }},
+  "sku": "{{ product.sku|default_if_none:'' }}",
+  "offers": {
+    "@type": "Offer",
+    "url": "{{ request.build_absolute_uri|default:'' }}",
+    "priceCurrency": "IRR",
+    "price": "{{ product.discounted_price|default:product.price }}",
+    "availability": "https://schema.org/{% if product.is_active %}InStock{% else %}OutOfStock{% endif %}"
+  }
+}
+</script>
+{% endblock %}

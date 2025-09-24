@@ -1,4 +1,3 @@
-{# templates/backoffice/partials/_order_status_badge.html #}
 {% with s=status|stringformat:"s" %}
   {% if s in "paid,completed,fulfilled" %}
     <span class="tag is-success">{{ s }}</span>

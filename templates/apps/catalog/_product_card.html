@@ -1,0 +1,61 @@
+{# templates/catalog/_product_card.html #}
+{% load static humanize %}
+<article class="card product-card" role="group" aria-labelledby="prod-{{ product.id }}">
+  <div class="card-image">
+    <a href="{% url 'catalog:product_detail' pk=product.id slug=product.slug %}" aria-label="{{ product.title }}">
+      <figure class="image is-4by3">
+        {% if product.primary_image %}
+          <img src="{{ product.primary_image.url }}" alt="{{ product.title }}" loading="lazy">
+        {% else %}
+          <img src="{% static 'shop/placeholder-600x450.png' %}" alt="{{ product.title }}" loading="lazy">
+        {% endif %}
+      </figure>
+    </a>
+  </div>
+
+  <div class="card-content">
+    <p id="prod-{{ product.id }}" class="is-size-6 has-text-weight-semibold mb-1">
+      <a href="{% url 'catalog:product_detail' pk=product.id slug=product.slug %}">{{ product.title }}</a>
+    </p>
+
+    {% if product.brand %}
+      <p class="is-size-7 has-text-grey mb-2">{{ product.brand.name }}</p>
+    {% endif %}
+
+    <div class="level is-mobile mb-2">
+      <div class="level-left">
+        <div class="level-item">
+          {% if product.discounted_price %}
+            <span class="has-text-danger has-text-weight-bold">{{ product.discounted_price|intcomma }} تومان</span>
+            <span class="ml-2 has-text-grey-light" style="text-decoration:line-through">{{ product.price|intcomma }} تومان</span>
+          {% else %}
+            <span class="has-text-weight-bold">{{ product.price|intcomma }} تومان</span>
+          {% endif %}
+        </div>
+      </div>
+      <div class="level-right">
+        <div class="level-item">
+          {% if product.is_active %}
+            <span class="tag is-light is-small">موجود</span>
+          {% else %}
+            <span class="tag is-danger is-small">ناموجود</span>
+          {% endif %}
+        </div>
+      </div>
+    </div>
+
+    <div class="buttons">
+      {% if product.variants.all|length %}
+        <a class="button is-link is-light is-fullwidth" href="{% url 'catalog:product_detail' pk=product.id slug=product.slug %}">مشاهده</a>
+      {% else %}
+        <form action="{% url 'orders:add_to_cart' product.id %}" method="post" class="is-inline-block" style="width:100%;">
+          {% csrf_token %}
+          <input type="hidden" name="qty" value="1">
+          <button class="button is-primary is-fullwidth" type="submit" {% if not product.is_active %}disabled{% endif %}>
+            افزودن به سبد
+          </button>
+        </form>
+      {% endif %}
+    </div>
+  </div>
+</article>

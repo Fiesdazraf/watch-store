@@ -1,0 +1,37 @@
+{# templates/partials/_header.html #}
+<nav class="navbar is-white has-shadow" role="navigation" aria-label="main navigation">
+  <div class="container">
+    <div class="navbar-brand">
+      <a class="navbar-item has-text-weight-bold" href="/">🕒 Watch Store</a>
+
+      <a role="button" class="navbar-burger" aria-label="menu" aria-expanded="false" data-target="main-navbar">
+        <span aria-hidden="true"></span>
+        <span aria-hidden="true"></span>
+        <span aria-hidden="true"></span>
+      </a>
+    </div>
+
+    <div id="main-navbar" class="navbar-menu">
+      <div class="navbar-end">
+        <a href="/" class="navbar-item">خانه</a>
+        <a href="{% url 'catalog:product_list' %}" class="navbar-item">فروشگاه</a>
+        <a href="{% url 'orders:cart_detail' %}" class="navbar-item">سبد خرید</a>
+        <a href="/admin/" class="navbar-item">مدیریت</a>
+      </div>
+    </div>
+  </div>
+</nav>
+
+<script>
+  // Bulma burger toggle
+  document.addEventListener('DOMContentLoaded', function () {
+    const burger = document.querySelector('.navbar-burger');
+    const menu = document.getElementById('main-navbar');
+    if (burger && menu) {
+      burger.addEventListener('click', function () {
+        burger.classList.toggle('is-active');
+        menu.classList.toggle('is-active');
+      });
+    }
+  });
+</script>

@@ -1,4 +1,3 @@
-{# templates/backoffice/order_detail.html #}
 {% extends "backoffice/base.html" %}
 {% load humanize %}
 {% block title %}جزئیات سفارش {{ order.number }} | Backoffice{% endblock %}
@@ -8,7 +7,7 @@
   <div class="level">
     <div class="level-left">
       <h1 class="title is-5 mb-0">سفارش #{{ order.number }}</h1>
-      <span class="ml-3">{% include "backoffice/partials/_order_status_badge.html" with status=order.status %}</span>
+      <span class="ml-3">{% include "apps/backoffice/partials/_order_status_badge.html" with status=order.status %}</span>
     </div>
     <div class="level-right">
       <a class="button is-light is-small" href="{% url 'orders:list' %}">بازگشت به سفارش‌ها</a>

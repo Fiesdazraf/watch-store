@@ -14,6 +14,7 @@ from django.db import transaction
 from django.db.models import Count, Sum
 from django.http import HttpRequest, HttpResponse, JsonResponse
 from django.shortcuts import get_object_or_404, redirect, render
+from django.urls import reverse
 from django.views.decorators.http import require_GET, require_POST
 
 from apps.accounts.models import Address
@@ -29,11 +30,6 @@ from .services import (
     set_shipping_method,
 )
 from .utils import send_order_confirmation_email
-
-try:
-    from .services import kpis as _kpis_service
-except Exception:
-    _kpis_service = None
 
 
 # ----------------------------- helpers -----------------------------
@@ -134,28 +130,74 @@ def cart_detail(request: HttpRequest) -> HttpResponse:
     subtotal = cart_total(cart)
     return render(
         request,
-        "orders/cart_detail.html",
+        "apps/orders/cart_detail.html",
         {"cart": cart, "items": items, "subtotal": subtotal},
     )
+
+
+MAX_QTY_PER_ADD = 20  # sane upper-bound per request
 
 
 @require_POST
 @transaction.atomic
 def add_to_cart_view(request: HttpRequest, product_id: int) -> HttpResponse:
+    """
+    Add a product (and optional variant) to the current cart.
+
+    Guards:
+    - product must be active
+    - variant (if provided) must belong to product
+    - stock checks (for variant-based products)
+    - qty normalized [1, MAX_QTY_PER_ADD]
+    - redirects back to `next` (if provided) or cart
+    """
+    # Always merge session cart into user cart first to have a single source of truth
     _merge_session_cart_into_user(request)
-    cart = _get_cart(request)
+    cart = _get_cart(request)  # type: ignore[assignment]
 
+    # Inputs
     qty = _parse_qty(request.POST.get("qty"), default=1, minimum=1)
-    variant_id = request.POST.get("variant_id") or None
+    if qty > MAX_QTY_PER_ADD:
+        qty = MAX_QTY_PER_ADD
 
+    variant_id = (request.POST.get("variant_id") or "").strip() or None
+    next_url = (request.POST.get("next") or request.META.get("HTTP_REFERER") or "").strip()
+
+    # Fetch product
     product = get_object_or_404(Product, pk=product_id)
-    variant = None
+
+    # Activity / availability
+    if not getattr(product, "is_active", True):
+        messages.error(request, "این محصول در حال حاضر فعال نیست.")
+        return redirect(next_url or reverse("orders:cart_detail"))
+
+    # Resolve variant (if any) and verify ownership
+    variant: ProductVariant | None = None
     if variant_id:
         variant = get_object_or_404(ProductVariant, pk=variant_id, product=product)
 
+        # Optional stock check for variant products
+        stock = getattr(variant, "stock", None)
+        if stock is not None and stock <= 0:
+            messages.error(request, "این تنوعِ محصول ناموجود است.")
+            return redirect(next_url or reverse("orders:cart_detail"))
+
+        # If stock exists, avoid exceeding stock in a single add
+        if stock is not None and qty > stock:
+            qty = max(1, stock)
+            messages.warning(request, "تعداد به موجودی موجود محدود شد.")
+
+    else:
+        # اگر محصول فقط از طریق واریانت فروخته می‌شود، کاربر باید یکی را انتخاب کند
+        if hasattr(product, "variants") and product.variants.exists():
+            messages.error(request, "لطفاً تنوع مورد نظر را انتخاب کنید.")
+            return redirect(next_url or reverse("orders:cart_detail"))
+
+    # Add to cart (service should snapshot unit_price internally)
     add_to_cart(cart=cart, product=product, variant=variant, qty=qty)
-    messages.success(request, "Item added to cart.")
-    return redirect("orders:cart_detail")
+
+    messages.success(request, "به سبد خرید اضافه شد.")
+    return redirect(next_url or reverse("orders:cart_detail"))
 
 
 @require_POST
@@ -217,7 +259,7 @@ def order_history_view(request: HttpRequest) -> HttpResponse:
             .prefetch_related("items", "items__product", "items__variant", "items__product__images")
             .order_by("-placed_at")
         )
-    return render(request, "orders/order_history.html", {"orders": orders})
+    return render(request, "apps/orders/order_history.html", {"orders": orders})
 
 
 @login_required

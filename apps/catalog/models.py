@@ -1,7 +1,6 @@
 # apps/catalog/models.py
 from __future__ import annotations
 
-from decimal import Decimal
 from functools import cached_property
 
 from django.db import models
@@ -237,7 +236,7 @@ class Product(models.Model):
     objects = ProductManager()
 
     sku = models.CharField(max_length=64, unique=True)
-    price = models.DecimalField(max_digits=10, decimal_places=2, default=Decimal("0.00"))
+    price = models.DecimalField(max_digits=12, decimal_places=0)
     is_active = models.BooleanField(default=True)
     created_at = models.DateTimeField(auto_now_add=True)
 
@@ -287,7 +286,7 @@ class ProductVariant(models.Model):
     attribute = models.CharField(max_length=60)  # e.g. "strap", "color", "size"
     is_active = models.BooleanField(default=True)
     value = models.CharField(max_length=60)  # e.g. "leather - brown", "blue", "42mm"
-    extra_price = models.DecimalField(max_digits=10, decimal_places=2, default=Decimal("0.00"))
+    extra_price = models.DecimalField(max_digits=12, decimal_places=0, default=0)
     stock = models.PositiveIntegerField(default=0)
 
     class Meta:

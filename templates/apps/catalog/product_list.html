@@ -1,5 +1,5 @@
 {% extends "base.html" %}
-{% load static %}
+{% load static humanize %}
 {% block title %}فروشگاه{% endblock %}
 
 {% block content %}
@@ -8,8 +8,11 @@
 
     <h1 class="title is-4">فروشگاه</h1>
 
-    <!-- Filter form -->
-    <form method="get" class="box mb-5">
+    <!-- Filter form (HTMX-enabled: progressive enhancement) -->
+    <form id="filters-form" method="get" class="box mb-5"
+          hx-get="{% url 'catalog:product_list' %}"
+          hx-target="#products-grid"
+          hx-push-url="true">
       <div class="columns is-multiline">
         <div class="column is-12-tablet is-4-desktop">
           <div class="field">
@@ -57,7 +60,7 @@
           <div class="field">
             <label class="label">حداقل قیمت</label>
             <div class="control">
-              <input class="input" type="number" name="price_min" step="0.01" placeholder="Min" value="{{ request.GET.price_min }}">
+              <input class="input" type="number" name="price_min" step="1" placeholder="Min" value="{{ request.GET.price_min }}">
             </div>
           </div>
         </div>
@@ -66,7 +69,7 @@
           <div class="field">
             <label class="label">حداکثر قیمت</label>
             <div class="control">
-              <input class="input" type="number" name="price_max" step="0.01" placeholder="Max" value="{{ request.GET.price_max }}">
+              <input class="input" type="number" name="price_max" step="1" placeholder="Max" value="{{ request.GET.price_max }}">
             </div>
           </div>
         </div>
@@ -95,80 +98,49 @@
       </div>
     </form>
 
-    <!-- Products grid -->
-    {% if products %}
+    <!-- Products grid (target for HTMX) -->
+    <div id="products-grid">
       <div class="columns is-multiline">
         {% for p in products %}
-        <div class="column is-6-tablet is-4-desktop is-3-widescreen">
-          <div class="card">
-            <div class="card-image">
-              <a href="{% url 'catalog:product_detail' p.slug %}">
-                <figure class="image is-4by3">
-                  {% if p.primary_image %}
-                    <img src="{{ p.primary_image.url }}" alt="{{ p.title }}">
-                  {% else %}
-                    <img src="{% static 'shop/placeholder-600x450.png' %}" alt="{{ p.title }}">
-                  {% endif %}
-                </figure>
-              </a>
-            </div>
-            <div class="card-content">
-              <p class="is-size-6 has-text-weight-semibold mb-1">
-                <a href="{% url 'catalog:product_detail' p.slug %}">{{ p.title }}</a>
-              </p>
-              {% if p.brand %}
-                <p class="is-size-7 has-text-grey mb-2">{{ p.brand.name }}</p>
-              {% endif %}
-              <p class="mb-3"><strong>{{ p.price }}</strong></p>
-
-              <div class="buttons">
-                {% if p.variants.count %}
-                  <a href="{% url 'catalog:product_detail' p.slug %}" class="button is-link is-light">مشاهده</a>
-                {% else %}
-                  <form action="{% url 'orders:add_to_cart' p.id %}" method="post">
-                    {% csrf_token %}
-                    <input type="hidden" name="qty" value="1">
-                    <button class="button is-primary" type="submit" {% if not p.is_active %}disabled{% endif %}>
-                      افزودن به سبد
-                    </button>
-                  </form>
-                {% endif %}
-              </div>
-            </div>
+          <div class="column is-6-tablet is-4-desktop is-3-widescreen">
+            {# product card partial: if you created _product_card.html, include it and pass product=p #}
+            {% include "catalog/_product_card.html" with product=p %}
           </div>
-        </div>
         {% endfor %}
       </div>
-    {% else %}
-      <article class="message is-info">
-        <div class="message-body">
-          محصولی یافت نشد.
-        </div>
-      </article>
-    {% endif %}
 
-    <!-- Pagination -->
-    {% if is_paginated %}
-      {% with query_params=request.GET.urlencode %}
-      <nav class="pagination is-centered mt-5" role="navigation" aria-label="pagination">
-        {% if page_obj.has_previous %}
-          <a class="pagination-previous" href="?page={{ page_obj.previous_page_number }}&{{ query_params|urlencode }}">قبلی</a>
-        {% else %}
-          <a class="pagination-previous" disabled>قبلی</a>
-        {% endif %}
+      {% if is_paginated %}
+        <nav class="pagination is-centered mt-5" role="navigation" aria-label="pagination">
+          {% comment %}
+            Use ctx['querystring'] (prepared in view without `page`) to keep filters; if you didn't add it,
+            fallback to request.GET.urlencode (may double-include page param).
+          {% endcomment %}
+          {% with qs=querystring|default:request.GET.urlencode %}
+            {% if page_obj.has_previous %}
+              <a class="pagination-previous"
+                 hx-get="?page={{ page_obj.previous_page_number }}&{{ qs }}"
+                 hx-target="#products-grid"
+                 hx-push-url="true">قبلی</a>
+            {% else %}
+              <a class="pagination-previous" disabled>قبلی</a>
+            {% endif %}
 
-        {% if page_obj.has_next %}
-          <a class="pagination-next" href="?page={{ page_obj.next_page_number }}&{{ query_params|urlencode }}">بعدی</a>
-        {% else %}
-          <a class="pagination-next" disabled>بعدی</a>
-        {% endif %}
+            {% if page_obj.has_next %}
+              <a class="pagination-next"
+                 hx-get="?page={{ page_obj.next_page_number }}&{{ qs }}"
+                 hx-target="#products-grid"
+                 hx-push-url="true">بعدی</a>
+            {% else %}
+              <a class="pagination-next" disabled>بعدی</a>
+            {% endif %}
+          {% endwith %}
 
-        <ul class="pagination-list">
-          <li><span class="pagination-ellipsis">صفحه {{ page_obj.number }} از {{ page_obj.paginator.num_pages }}</span></li>
-        </ul>
-      </nav>
-      {% endwith %}
-    {% endif %}
+          <ul class="pagination-list">
+            <li><span class="pagination-ellipsis">صفحه {{ page_obj.number }} از {{ page_obj.paginator.num_pages }}</span></li>
+          </ul>
+        </nav>
+      {% endif %}
+    </div>
 
   </div>
 </section>

@@ -97,7 +97,10 @@ ASGI_APPLICATION = "config.asgi.application"
 TEMPLATES = [
     {
         "BACKEND": "django.template.backends.django.DjangoTemplates",
-        "DIRS": [BASE_DIR / "templates"],
+        "DIRS": [
+            BASE_DIR / "templates",  # برای base.html و partials/
+            BASE_DIR / "templates/apps",  # برای تمپلیت‌های اپ‌ها
+        ],
         "APP_DIRS": True,
         "OPTIONS": {
             "context_processors": [

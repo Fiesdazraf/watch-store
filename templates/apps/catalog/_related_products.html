@@ -1,0 +1,43 @@
+{# templates/catalog/_related_products.html #}
+{% load static humanize %}
+
+{% if related_products %}
+  <section class="section pt-4">
+    <h3 class="title is-5">محصولات مرتبط</h3>
+    <div class="columns is-multiline">
+      {% for rp in related_products %}
+        <div class="column is-6-tablet is-3-desktop">
+          <div class="card">
+            <div class="card-image">
+              <a href="{% url 'catalog:product_detail' pk=rp.id slug=rp.slug %}">
+                <figure class="image is-4by3">
+                  {% if rp.primary_image %}
+                    <img src="{{ rp.primary_image.url }}"
+                         alt="{{ rp.title }}"
+                         loading="lazy"
+                         onerror="this.onerror=null;this.src='{% static 'shop/placeholder-300x225.png' %}';">
+                  {% else %}
+                    <img src="{% static 'shop/placeholder-300x225.png' %}"
+                         alt="{{ rp.title }}"
+                         loading="lazy">
+                  {% endif %}
+                </figure>
+              </a>
+            </div>
+            <div class="card-content">
+              <p class="is-size-7 has-text-weight-semibold mb-1">
+                <a href="{% url 'catalog:product_detail' pk=rp.id slug=rp.slug %}">
+                  {{ rp.title }}
+                </a>
+              </p>
+              {% if rp.brand %}
+                <p class="is-size-7 has-text-grey mb-1">{{ rp.brand.name }}</p>
+              {% endif %}
+              <p class="has-text-weight-semibold">{{ rp.price|intcomma }} تومان</p>
+            </div>
+          </div>
+        </div>
+      {% endfor %}
+    </div>
+  </section>
+{% endif %}
