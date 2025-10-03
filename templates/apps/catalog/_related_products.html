@@ -26,9 +26,7 @@
             </div>
             <div class="card-content">
               <p class="is-size-7 has-text-weight-semibold mb-1">
-                <a href="{% url 'catalog:product_detail' pk=rp.id slug=rp.slug %}">
-                  {{ rp.title }}
-                </a>
+                <a href="{% url 'catalog:product_detail' pk=rp.id slug=rp.slug %}">{{ rp.title }}</a>
               </p>
               {% if rp.brand %}
                 <p class="is-size-7 has-text-grey mb-1">{{ rp.brand.name }}</p>

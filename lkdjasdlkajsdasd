@@ -1,0 +1,81 @@
+[33mcommit 684354ab7910d0f0de170d497b3711f0ef1eb0c0[m[33m ([m[1;36mHEAD[m[33m -> [m[1;32mmain[m[33m, [m[1;31morigin/main[m[33m)[m
+Author: fiesdazraf <8leorave@gmail.com>
+Date:   Wed Sep 24 05:52:41 2025 +0330
+
+    feat(ui,templates,catalog): Phase 10 — UI/UX sweep for Shop + PDP + templates restructuring
+    
+    ### What’s included
+    - **Templates architecture**
+      - Introduce project-level `templates/base.html` with HTMX & Bulma blocks.
+      - Add `templates/partials/_header.html` and `_footer.html` and include them in base.
+      - Move app pages under `templates/apps/...` and expose via `DIRS`:
+        - `templates/`
+        - `templates/apps/`
+      - All app pages now `extends "base.html"`; partials included via `"partials/..."`.
+    
+    - **Settings**
+      - Update `TEMPLATES[0]["DIRS"]` to include both `templates/` and `templates/apps/`.
+      - Keep `APP_DIRS=True` for compatibility.
+    
+    - **Catalog — Product List (Shop)**
+      - Build **HTMX-enabled filters** (search/brand/category/price/order) with progressive enhancement.
+      - Extract partials:
+        - `catalog/_product_card.html`
+        - `catalog/_products_grid.html` (grid + pagination with `hx-get`, `hx-target`, `hx-push-url`).
+      - `ProductListView`:
+        - Optimized queryset with `select_related/prefetch_related`.
+        - Safe decimal filters; swap min/max when needed.
+        - Preserve filters across pagination via `querystring` (without `page`).
+        - **HTMX support**: override `get()` to render partial grid when `HX-Request` is present.
+      - Humanized prices (`intcomma`), lazy images, and robust image fallback (placeholder + `onerror`).
+    
+    - **Catalog — PDP (Product Detail Page)**
+      - Enhanced PDP template with:
+        - Gallery + thumbnails
+        - Stock status & variant-aware UX
+        - Tabs (Description / Specs / Reviews placeholder)
+        - **Related products**: `catalog/_related_products.html`
+        - JSON-LD Product schema
+      - `ProductDetailView.get_context_data`:
+        - `total_stock` via `Sum("stock")`
+        - `related_products` (same category fallback to brand)
+        - `has_variants` flag
+      - Fix: avoid `FieldError` by aligning `only()` with `select_related` (include FK ids or drop `only` where needed).
+    
+    - **URLs (public landing)**
+      - Ensure root resolves to public shop (or smart dispatch if configured), prevent accidental redirect to backoffice login.
+    
+    - **Quality improvements**
+      - Consistent placeholders (.png) and lazy loading across list & PDP.
+      - Removed duplicated imports; cleaned view modules & comments.
+    
+    ### Why
+    A cohesive UI/UX for browsing & product detail with fast interactions, cleaner template structure (DRY), and safer data access patterns.
+    
+    ### Notes
+    - Template names now resolved from:
+      - `base.html` and `partials/...` (under `templates/`)
+      - `catalog/...` etc. (under `templates/apps/`)
+    - If you previously referenced `"apps/catalog/..."`, update to `"catalog/..."` due to dual `DIRS`.
+    
+    ### Test plan
+    - **Templates loader**
+      - `get_template("base.html")` ✅
+      - `get_template("partials/_header.html")` ✅
+      - `get_template("catalog/product_list.html")` ✅
+    - **Shop**
+      - Open `/shop/` with no errors; products render; filters update grid via HTMX; URL query syncs.
+      - Pagination works with filters; only grid swaps.
+    - **PDP**
+      - Open `/shop/<pk>-<slug>/`; gallery thumbs swap main image; tabs switch without reload.
+      - Variant select updates “Add to cart” enabled/disabled.
+      - Related products show with image fallbacks.
+    - **Images**
+      - Media served in dev; broken images fallback to placeholders.
+    - **SEO**
+      - JSON-LD present on PDP (name, images, sku, offers).
+    
+    ### Follow-ups (optional)
+    - Quick-add to cart via HTMX on product cards.
+    - Context processor for cart summary in header.
+    - Split this mega-commit into logical PRs if desired.

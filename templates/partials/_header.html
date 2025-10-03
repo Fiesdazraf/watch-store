@@ -15,7 +15,12 @@
       <div class="navbar-end">
         <a href="/" class="navbar-item">خانه</a>
         <a href="{% url 'catalog:product_list' %}" class="navbar-item">فروشگاه</a>
-        <a href="{% url 'orders:cart_detail' %}" class="navbar-item">سبد خرید</a>
+        <a href="{% url 'orders:cart_detail' %}" class="navbar-item">
+          سبد خرید
+          {% if cart_summary.total_qty > 0 %}
+            <span class="tag is-primary is-light ml-2">{{ cart_summary.total_qty }}</span>
+          {% endif %}
+        </a>
         <a href="/admin/" class="navbar-item">مدیریت</a>
       </div>
     </div>

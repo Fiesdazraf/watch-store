@@ -235,6 +235,10 @@ class Product(models.Model):
 
     objects = ProductManager()
 
+    short_description = models.CharField(max_length=300, blank=True, null=True)
+    description = models.TextField(blank=True, null=True)
+    discounted_price = models.DecimalField(max_digits=12, decimal_places=0, blank=True, null=True)
+
     sku = models.CharField(max_length=64, unique=True)
     price = models.DecimalField(max_digits=12, decimal_places=0)
     is_active = models.BooleanField(default=True)
@@ -269,8 +273,8 @@ class Product(models.Model):
         imgs = list(getattr(self, "images").all())
         for im in imgs:
             if getattr(im, "is_primary", False):
-                return im
-        return imgs[0] if imgs else None
+                return im.image
+        return imgs[0].image if imgs else None
 
 
 # -----------------------------------------------------------------------------

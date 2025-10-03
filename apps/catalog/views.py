@@ -131,21 +131,6 @@ class ProductDetailView(DetailView):
         return (
             Product.objects.select_related("brand", "collection", "category")
             .prefetch_related("images", "variants")
-            .only(
-                "id",
-                "slug",
-                "title",
-                "description",
-                "short_description",
-                "price",
-                "discounted_price",
-                "is_active",
-                "brand__name",
-                "brand__slug",
-                "category__name",
-                "category__slug",
-                "collection__name",
-            )
             .filter(is_active=True)
         )
 

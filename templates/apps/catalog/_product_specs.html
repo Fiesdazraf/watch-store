@@ -2,14 +2,6 @@
 <div class="content">
   <h4 class="is-size-6 has-text-weight-semibold">مشخصات فنی</h4>
 
-  {% comment %}
-    اگر مدل تو دارای فیلد structured_specs (مثلاً JSONField) است، می‌تونی آن را اینجا iterate کنی.
-    مثال:
-      {% for k,v in product.structured_specs.items %}
-        <p><strong>{{ k }}</strong>: {{ v }}</p>
-      {% endfor %}
-  {% endcomment %}
-
   <table class="table is-fullwidth is-striped">
     <tbody>
       <tr>
@@ -18,11 +10,23 @@
       </tr>
       <tr>
         <th>برند</th>
-        <td>{{ product.brand.name if product.brand }}</td>
+        <td>
+          {% if product.brand %}
+            {{ product.brand.name }}
+          {% else %}
+            —
+          {% endif %}
+        </td>
       </tr>
       <tr>
         <th>دسته</th>
-        <td>{{ product.category.name if product.category }}</td>
+        <td>
+          {% if product.category %}
+            {{ product.category.name }}
+          {% else %}
+            —
+          {% endif %}
+        </td>
       </tr>
       <tr>
         <th>وزن (نمونه)</th>
