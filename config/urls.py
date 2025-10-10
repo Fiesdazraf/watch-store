@@ -38,6 +38,7 @@ urlpatterns = [
     path("admin/", admin.site.urls),
     path("health/", healthcheck, name="health"),
     path("accounts/", include(("apps.accounts.urls", "accounts"), namespace="accounts")),
+    path("customers/", include(("apps.customers.urls", "customers"), namespace="customers")),
     path("payments/", include(("apps.payments.urls", "payments"), namespace="payments")),
     # keep catalog mounted where it currently expects to be (it defines /shop/ internally)
     path("catalog/", include(("apps.catalog.urls", "catalog"), namespace="catalog")),

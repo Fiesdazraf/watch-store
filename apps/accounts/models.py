@@ -1,9 +1,6 @@
-from django.conf import settings
 from django.contrib.auth.base_user import AbstractBaseUser, BaseUserManager
 from django.contrib.auth.models import PermissionsMixin
-from django.core.validators import RegexValidator
 from django.db import models
-from django.db.models import Q, UniqueConstraint
 from django.utils import timezone
 
 
@@ -63,79 +60,3 @@ class User(AbstractBaseUser, PermissionsMixin):
 
     def __str__(self):
         return self.email or f"User {self.pk}"
-
-
-# -----------------------------
-# Address (names aligned with your forms/templates)
-# -----------------------------
-class Address(models.Model):
-    class AddressType(models.TextChoices):
-        SHIPPING = "shipping", "Shipping"
-        BILLING = "billing", "Billing"
-
-    user = models.ForeignKey(
-        settings.AUTH_USER_MODEL,
-        on_delete=models.CASCADE,
-        related_name="addresses",
-    )
-
-    address_type = models.CharField(
-        max_length=20, choices=AddressType.choices, default=AddressType.SHIPPING
-    )
-
-    full_name = models.CharField(max_length=150)
-    phone_number = models.CharField(
-        max_length=20,
-        validators=[RegexValidator(r"^[0-9+\-()\s]{6,}$", message="Enter a valid phone number.")],
-    )
-
-    country = models.CharField(max_length=80, default="Iran")
-    province = models.CharField(max_length=80, blank=True)
-    city = models.CharField(max_length=80)
-    postal_code = models.CharField(max_length=20, blank=True)
-
-    line1 = models.CharField(max_length=255)
-    line2 = models.CharField(max_length=255, blank=True)
-
-    is_default = models.BooleanField(default=False, db_index=True)
-    is_active = models.BooleanField(default=True)
-
-    created_at = models.DateTimeField(auto_now_add=True)  # فقط یک‌بار
-    updated_at = models.DateTimeField(auto_now=True)
-
-    class Meta:
-        constraints = [
-            UniqueConstraint(
-                fields=["user", "address_type"],
-                condition=Q(is_default=True),
-                name="unique_default_address_per_type_per_user",
-            )
-        ]
-        ordering = ("-is_default", "-created_at")
-
-    def save(self, *args, **kwargs):
-        super().save(*args, **kwargs)
-        if self.is_default:
-            Address.objects.filter(
-                user=self.user, address_type=self.address_type, is_default=True
-            ).exclude(pk=self.pk).update(is_default=False)
-
-    # Aliases to keep older templates safe (optional)
-    @property
-    def phone(self):
-        return self.phone_number
-
-    @property
-    def state(self):
-        return self.province
-
-    @property
-    def address_line_1(self):
-        return self.line1
-
-    @property
-    def address_line_2(self):
-        return self.line2
-
-    def __str__(self):
-        return f"{self.get_address_type_display()} - {self.full_name} ({self.city})"

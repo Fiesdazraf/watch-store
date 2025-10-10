@@ -8,10 +8,6 @@ from .views import (
     MyPasswordResetDoneView,
     MyPasswordResetView,
     activate_account_view,
-    address_create_view,
-    address_delete_view,
-    address_list_view,
-    address_update_view,
     dashboard_view,
     profile_view,
     register_view,
@@ -27,11 +23,6 @@ urlpatterns = [
     path("logout/", LogoutView.as_view(next_page="accounts:login"), name="logout"),
     path("dashboard/", dashboard_view, name="dashboard"),
     path("profile/", profile_view, name="profile"),
-    # Addresses
-    path("addresses/", address_list_view, name="address_list"),
-    path("addresses/create/", address_create_view, name="address_create"),
-    path("addresses/<int:pk>/edit/", address_update_view, name="address_update"),
-    path("addresses/<int:pk>/delete/", address_delete_view, name="address_delete"),
     # Password reset
     path("password-reset/", MyPasswordResetView.as_view(), name="password_reset"),
     path("password-reset/done/", MyPasswordResetDoneView.as_view(), name="password_reset_done"),

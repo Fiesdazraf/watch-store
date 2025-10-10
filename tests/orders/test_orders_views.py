@@ -14,7 +14,7 @@ def test_cart_page_renders(client, cart):
     assert "cart" in resp.context
 
 
-def test_add_to_cart_view(client, user, product, variant):
+def test_add_to_cart(client, user, product, variant):
     client.force_login(user)
     url = reverse("orders:add_to_cart", args=[product.id])
     resp = client.post(url, {"qty": 2, "variant_id": variant.id})

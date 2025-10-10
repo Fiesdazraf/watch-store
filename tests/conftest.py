@@ -64,15 +64,16 @@ def customer(db, user):
 
 @pytest.fixture
 def address(db, customer):
-    # Address در apps.accounts است (نه customers)
-    return baker.make("accounts.Address", user=customer.user)
+    return baker.make("customers.Address", user=customer.user)
 
 
 @pytest.fixture
 def product(db):
-    # به Product فیلد name نده چون در مدل شما وجود ندارد.
-    # اگر price هم متفاوت بود، bakery خودش مقدار دیفالت می‌سازد.
-    return baker.make("catalog.Product", is_active=True)
+    return baker.make(
+        "catalog.Product",
+        is_active=True,
+        price=Decimal("200.00"),  # ✅ مقدار ثابت و قابل‌پشتیبانی
+    )
 
 
 @pytest.fixture
@@ -81,6 +82,7 @@ def variant(db, product):
         "catalog.ProductVariant",
         product=product,
         is_active=True,
+        extra_price=Decimal("0.00"),  # ✅ در صورت وجود این فیلد
     )
 
 
@@ -90,7 +92,7 @@ def shipping_method(db):
         "orders.ShippingMethod",
         name="Post",
         code="post",
-        base_price="10.00",
+        base_price=Decimal("10.00"),
         is_active=True,
     )
 

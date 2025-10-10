@@ -10,6 +10,7 @@
 
     {% if items %}
       <div class="columns">
+        <!-- Cart summary -->
         <div class="column is-two-thirds">
           <h2 class="subtitle">Your cart</h2>
           <table class="table is-fullwidth">
@@ -24,7 +25,10 @@
             <tbody>
               {% for it in items %}
               <tr>
-                <td>{{ it.product.name }}{% if it.variant %} ({{ it.variant.sku }}){% endif %}</td>
+                <td>
+                  {{ it.product.name }}
+                  {% if it.variant %} ({{ it.variant.sku }}){% endif %}
+                </td>
                 <td class="has-text-centered">{{ it.quantity }}</td>
                 <td class="has-text-right">{{ it.unit_price }}</td>
                 <td class="has-text-right">{{ it.subtotal }}</td>
@@ -40,28 +44,63 @@
           </table>
         </div>
 
+        <!-- Checkout form -->
         <div class="column">
           <h2 class="subtitle">Shipping & Payment</h2>
           <form method="post" novalidate>
             {% csrf_token %}
+
+            {# ----- Address selection ----- #}
             <div class="field">
               <label class="label">Address</label>
-              <div class="control">{{ form.address }}</div>
-              {% for e in form.address.errors %}<p class="help is-danger">{{ e }}</p>{% endfor %}
+              {% if addresses %}
+                <div class="box">
+                  {% for addr in addresses %}
+                    <label class="radio block">
+                      <input type="radio" name="address_id" value="{{ addr.id }}"
+                        {% if addr.id == default_address_id %}checked{% endif %}>
+                      {{ addr.full_name }} – {{ addr.line1 }}, {{ addr.city }}
+                      {% if addr.default_shipping %}
+                        <span class="tag is-info">Default</span>
+                      {% endif %}
+                    </label>
+                  {% endfor %}
+                </div>
+
+                <div class="field mt-2">
+                  <a href="{% url 'customers:address_list' %}" class="button is-small is-link">
+                    <span class="icon"><i class="fas fa-map-marker-alt"></i></span>
+                    <span>Manage addresses</span>
+                  </a>
+                </div>
+              {% else %}
+                {# fallback for guests or no addresses #}
+                <div class="control">{{ form.address }}</div>
+                {% for e in form.address.errors %}
+                  <p class="help is-danger">{{ e }}</p>
+                {% endfor %}
+              {% endif %}
             </div>
 
+            {# ----- Shipping method ----- #}
             <div class="field">
               <label class="label">Shipping method</label>
               <div class="control">{{ form.shipping_method }}</div>
-              {% for e in form.shipping_method.errors %}<p class="help is-danger">{{ e }}</p>{% endfor %}
+              {% for e in form.shipping_method.errors %}
+                <p class="help is-danger">{{ e }}</p>
+              {% endfor %}
             </div>
 
+            {# ----- Payment method ----- #}
             <div class="field">
               <label class="label">Payment method</label>
               <div class="control">{{ form.payment_method }}</div>
-              {% for e in form.payment_method.errors %}<p class="help is-danger">{{ e }}</p>{% endfor %}
+              {% for e in form.payment_method.errors %}
+                <p class="help is-danger">{{ e }}</p>
+              {% endfor %}
             </div>
 
+            {# ----- Notes ----- #}
             <div class="field">
               <label class="label">Notes (optional)</label>
               <div class="control">{{ form.notes }}</div>
@@ -69,7 +108,9 @@
 
             <div class="field">
               <div class="control">
-                <button class="button is-primary is-fullwidth" type="submit">Place order</button>
+                <button class="button is-primary is-fullwidth" type="submit">
+                  Place order
+                </button>
               </div>
             </div>
           </form>

@@ -9,9 +9,8 @@ from django.db import models, transaction
 from django.db.models import Q, QuerySet, UniqueConstraint
 from django.urls import reverse
 
-from apps.accounts.models import Address
 from apps.catalog.models import Product, ProductVariant
-from apps.customers.models import Customer
+from apps.customers.models import Address, Customer
 
 if TYPE_CHECKING:
     pass
@@ -373,8 +372,7 @@ class OrderItem(models.Model):
 
     product_name = models.CharField(max_length=200, blank=True)
     sku = models.CharField(max_length=64, blank=True)
-
-    unit_price = models.DecimalField(max_digits=10, decimal_places=2, blank=True, null=True)
+    unit_price = models.DecimalField(max_digits=10, decimal_places=2, default=Decimal("0.00"))
     quantity = models.PositiveIntegerField(default=1)
 
     class Meta:
@@ -388,7 +386,7 @@ class OrderItem(models.Model):
         return (self.unit_price or Decimal("0.00")) * self.quantity
 
     def save(self, *args, **kwargs):
-        # Use title if your Product model uses 'title'
+        """Ensure product_name, sku, and unit_price are always valid and quantized."""
         if not self.product_name:
             self.product_name = (
                 getattr(self.product, "title", None)
@@ -397,12 +395,25 @@ class OrderItem(models.Model):
             )
         if not self.sku:
             self.sku = getattr(self.variant, "sku", "") or getattr(self.product, "sku", "") or ""
+
+        # Compute price if missing
         if not self.unit_price:
-            base = getattr(self.product, "price", None) or Decimal("0.00")
+            base = getattr(self.product, "price", Decimal("0.00")) or Decimal("0.00")
             extra = (
                 getattr(self.variant, "extra_price", Decimal("0.00"))
                 if self.variant
                 else Decimal("0.00")
             )
             self.unit_price = base + extra
+
+        # Safe quantization
+        from decimal import ROUND_HALF_UP, InvalidOperation
+
+        try:
+            self.unit_price = Decimal(str(self.unit_price)).quantize(
+                Decimal("0.01"), rounding=ROUND_HALF_UP
+            )
+        except (InvalidOperation, TypeError, ValueError):
+            self.unit_price = Decimal("0.00")
+
         super().save(*args, **kwargs)

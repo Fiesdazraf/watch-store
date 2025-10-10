@@ -1,58 +1,61 @@
 # apps/orders/forms.py
-from __future__ import annotations
-
 from django import forms
-from django.apps import apps
-from django.core.exceptions import FieldDoesNotExist
 
-from .models import ShippingMethod
+from apps.customers.models import Address
 
-
-def _model_has_field(model, field_name: str) -> bool:
-    try:
-        model._meta.get_field(field_name)
-        return True
-    except FieldDoesNotExist:
-        return False
+from .models import Order, ShippingMethod
 
 
-def _address_qs_for_owner(*, user):
-    """
-    Return Address queryset for current owner, regardless of schema:
-    - If Address has `user` FK -> filter(user=user)
-    - Else if Address has `customer` FK -> filter(customer=<Customer(user=user)>)
-    - Else -> none()
-    """
-    Address = apps.get_model("accounts", "Address")
+class BulmaMixin:
+    """Mixin to apply Bulma CSS classes to form widgets automatically."""
 
-    # Determine owner field & value dynamically
-    if _model_has_field(Address, "user"):
-        owner_field = "user"
-        owner_value = user
-    elif _model_has_field(Address, "customer"):
-        Customer = apps.get_model("customers", "Customer")
-        owner_field = "customer"
-        owner_value = Customer.objects.filter(user=user).first() if user else None
-    else:
-        return Address.objects.none()
-
-    if owner_value is None:
-        return Address.objects.none()
-
-    # Dynamic kwargs avoids any hard-coded 'user=' usage
-    return Address.objects.filter(**{owner_field: owner_value})
+    def _apply_bulma(self):
+        for _, field in self.fields.items():
+            widget = field.widget
+            classes = widget.attrs.get("class", "")
+            if isinstance(widget, (forms.TextInput, forms.EmailInput, forms.NumberInput)):
+                widget.attrs["class"] = f"{classes} input".strip()
+            elif isinstance(widget, forms.Textarea):
+                widget.attrs["class"] = f"{classes} textarea".strip()
+            elif isinstance(widget, forms.Select):
+                widget.attrs["class"] = f"{classes} select is-fullwidth".strip()
+            elif isinstance(widget, forms.CheckboxInput):
+                widget.attrs["class"] = f"{classes}".strip()  # Bulma برای checkbox خودش label داره
 
 
-class CheckoutForm(forms.Form):
-    address = forms.ModelChoiceField(queryset=None, required=True)
+class CheckoutForm(BulmaMixin, forms.Form):
+    """Checkout form for logged-in users."""
+
+    address = forms.ModelChoiceField(
+        queryset=Address.objects.none(),
+        required=False,
+        label="Shipping address",
+        widget=forms.Select,
+    )
     shipping_method = forms.ModelChoiceField(
         queryset=ShippingMethod.objects.filter(is_active=True),
+        required=True,
+        label="Shipping method",
+        widget=forms.Select,
+    )
+    payment_method = forms.ChoiceField(
+        choices=list(Order._meta.get_field("payment_method").choices) + [("fake", "Fake Gateway")],
+        required=True,
+        label="Payment method",
+        widget=forms.Select,
+    )
+    notes = forms.CharField(
         required=False,
-        empty_label=None,
+        label="Notes",
+        widget=forms.Textarea(attrs={"rows": 3}),
     )
 
-    def __init__(self, *args, user=None, **kwargs):
+    def __init__(self, *args, **kwargs):
+        user = kwargs.pop("user", None)
         super().__init__(*args, **kwargs)
-        self.user = user
-        self.fields["address"].queryset = _address_qs_for_owner(user=user)
-        self.fields["address"].empty_label = None
+        self._apply_bulma()
+
+        if user and user.is_authenticated:
+            self.fields["address"].queryset = user.addresses.all()
+        else:
+            self.fields.pop("address", None)  # اگر مهمان بود اصلاً address نداشته باشه

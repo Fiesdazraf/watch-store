@@ -240,7 +240,7 @@ class Product(models.Model):
     discounted_price = models.DecimalField(max_digits=12, decimal_places=0, blank=True, null=True)
 
     sku = models.CharField(max_length=64, unique=True)
-    price = models.DecimalField(max_digits=12, decimal_places=0)
+    price = models.DecimalField(max_digits=12, decimal_places=0, default=0)
     is_active = models.BooleanField(default=True)
     created_at = models.DateTimeField(auto_now_add=True)
 

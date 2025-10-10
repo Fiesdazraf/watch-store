@@ -2,7 +2,7 @@
 from __future__ import annotations
 
 from datetime import date, datetime, timedelta
-from decimal import Decimal, InvalidOperation
+from decimal import ROUND_HALF_UP, Decimal, InvalidOperation
 from typing import TYPE_CHECKING, TypedDict
 
 from django.contrib.auth import get_user_model
@@ -23,8 +23,7 @@ from .models import (
 )
 
 if TYPE_CHECKING:
-    from apps.accounts.models import Address
-    from apps.customers.models import Customer
+    from apps.customers.models import Address, Customer
     from apps.payments.models import Payment as PaymentModel
 
 User = get_user_model()
@@ -34,25 +33,57 @@ User = get_user_model()
 # helpers
 # ----------------------------
 def _to_decimal(value, default: str = "0.00") -> Decimal:
-    """Coerce arbitrary value to Decimal; fall back to given default on parse errors."""
+    """
+    Safely convert any value to Decimal.
+    Handles None, '', 'NaN', Decimal('NaN'), and invalid inputs without raising.
+    """
     try:
-        return Decimal(str(value))
+        # None یا خالی
+        if value in (None, "", "None", "null", "NaN"):
+            return Decimal(default)
+
+        # اگر خودش Decimal هست، ولی NaN باشه
+        if isinstance(value, Decimal):
+            if value.is_nan():
+                return Decimal(default)
+            return value
+
+        # اعداد int و float
+        if isinstance(value, (int, float)):
+            # اگر float NaN باشه
+            if value != value:  # NaN != NaN
+                return Decimal(default)
+            return Decimal(str(value))
+
+        # رشته‌ها
+        s = str(value).strip().replace(",", "")
+        if not s or s.lower() in {"none", "null", "nan"}:
+            return Decimal(default)
+        return Decimal(s)
+
     except (InvalidOperation, ValueError, TypeError):
         return Decimal(default)
 
 
 def _unit_price_for(product, variant=None) -> Decimal:
-    """
-    Compute unit price snapshot for a product/variant.
-    - If variant has explicit final_price, prefer it.
-    - Else base product price + variant.extra_price (if present).
-    """
-    base = _to_decimal(getattr(product, "price", "0.00"))
+    """Always return a valid Decimal('x.xx') with two digits."""
+
+    def safe_decimal(value) -> Decimal:
+        try:
+            d = Decimal(str(value))
+            if d.is_nan() or d.is_infinite():
+                return Decimal("0.00")
+            return d.quantize(Decimal("0.01"), rounding=ROUND_HALF_UP)
+        except (InvalidOperation, TypeError, ValueError):
+            return Decimal("0.00")
+
+    base = safe_decimal(getattr(product, "price", 0))
     if variant is not None:
-        if getattr(variant, "final_price", None) is not None:
-            return _to_decimal(getattr(variant, "final_price"))
-        extra = _to_decimal(getattr(variant, "extra_price", "0.00"))
-        return base + extra
+        final_price = getattr(variant, "final_price", None)
+        if final_price not in (None, "", "None", "null"):
+            return safe_decimal(final_price)
+        extra = safe_decimal(getattr(variant, "extra_price", 0))
+        return safe_decimal(base + extra)
     return base
 
 
@@ -62,28 +93,59 @@ def _unit_price_for(product, variant=None) -> Decimal:
 @transaction.atomic
 def add_to_cart(*, cart: Cart, product, variant=None, qty: int = 1) -> CartItem:
     """
-    Add a product/variant to the given cart, increasing quantity when item already exists.
+    Add product or variant to cart safely, compatible with unique constraints and tests.
     """
     qty = int(qty or 1)
     if qty < 1:
         qty = 1
 
+    variant = variant if getattr(variant, "pk", None) else None
     unit_price = _unit_price_for(product, variant)
 
+    # ---------------- FIX for unique constraint and variant mismatch ----------------
+    lookup = {"cart": cart}
+
+    if variant:
+        lookup["variant"] = variant
+        # Use variant.product if exists, fallback to given product
+        lookup["product"] = getattr(variant, "product", product)
+    else:
+        lookup["product"] = product
+        lookup["variant__isnull"] = True
+
     item, created = CartItem.objects.get_or_create(
-        cart=cart,
-        product=product,
-        variant=variant,
         defaults={"unit_price": unit_price, "quantity": qty},
+        **lookup,
     )
+    # -------------------------------------------------------------------------------
+
     if not created:
-        # Concurrent-safe increment
-        CartItem.objects.filter(pk=item.pk).update(quantity=F("quantity") + qty)
+        # increase existing quantity safely
+        item.quantity = F("quantity") + qty
+        item.save(update_fields=["quantity"])
         item.refresh_from_db(fields=["quantity"])
-        # Keep latest unit price snapshot policy
-        if item.unit_price != unit_price:
-            item.unit_price = unit_price
-            item.save(update_fields=["unit_price"])
+
+    # sync latest price
+    if item.unit_price != unit_price:
+        item.unit_price = unit_price
+        item.save(update_fields=["unit_price"])
+
+    # ensure at least 1 quantity (edge case)
+    if item.quantity == 0:
+        item.quantity = qty
+        item.save(update_fields=["quantity"])
+
+    # ✅ NEW FIX — always quantize to two decimals
+    from decimal import ROUND_HALF_UP, Decimal
+
+    try:
+        item.unit_price = Decimal(str(item.unit_price)).quantize(
+            Decimal("0.01"), rounding=ROUND_HALF_UP
+        )
+    except Exception:
+        item.unit_price = Decimal("0.00")
+    item.save(update_fields=["unit_price"])
+
     return item
 
 

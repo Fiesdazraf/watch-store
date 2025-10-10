@@ -13,14 +13,13 @@ from django.contrib.auth.views import (
 from django.contrib.sites.shortcuts import get_current_site
 from django.core.mail import send_mail
 from django.http import HttpResponseBadRequest
-from django.shortcuts import get_object_or_404, redirect, render
+from django.shortcuts import redirect, render
 from django.template.loader import render_to_string
 from django.urls import reverse, reverse_lazy
 from django.utils.encoding import force_bytes
 from django.utils.http import urlsafe_base64_decode, urlsafe_base64_encode
 
-from .forms import AddressForm, ProfileForm, RegisterForm
-from .models import Address
+from .forms import ProfileForm, RegisterForm
 
 User = get_user_model()
 
@@ -30,7 +29,6 @@ def register_view(request):
         return redirect("accounts:dashboard")
     form = RegisterForm(request.POST or None)
     if request.method == "POST" and form.is_valid():
-        # NOTE: RegisterForm.save(commit=False) already sets hashed password
         user = form.save(commit=False)
         user.is_active = False
         user.email_verified = False
@@ -59,8 +57,6 @@ def register_view(request):
 class EmailLoginView(LoginView):
     template_name = "accounts/login.html"
     redirect_authenticated_user = True
-    # نکته: AuthenticationForm پیش‌فرض با فیلد 'username' کار می‌کند؛
-    # چون USERNAME_FIELD= email است، استفاده از همون input name='username' مشکلی ندارد.
 
 
 @login_required
@@ -76,50 +72,6 @@ def profile_view(request):
         messages.success(request, "Profile updated.")
         return redirect("accounts:profile")
     return render(request, "accounts/profile.html", {"form": form})
-
-
-@login_required
-def address_list_view(request):
-    addresses = request.user.addresses.order_by("-is_default", "-created_at")
-    return render(request, "accounts/address_list.html", {"addresses": addresses})
-
-
-@login_required
-def address_create_view(request):
-    form = AddressForm(request.POST or None, user=request.user)
-    if request.method == "POST" and form.is_valid():
-        addr = form.save(commit=False)
-        addr.user = request.user
-        addr.save()
-        if addr.is_default:
-            request.user.addresses.exclude(pk=addr.pk).update(is_default=False)
-        messages.success(request, "Address saved.")
-        return redirect("accounts:address_list")
-    return render(request, "accounts/address_form.html", {"form": form})
-
-
-@login_required
-def address_update_view(request, pk):
-    addr = get_object_or_404(Address, pk=pk, user=request.user)
-    form = AddressForm(request.POST or None, instance=addr, user=request.user)
-    if request.method == "POST" and form.is_valid():
-        addr = form.save()
-        if addr.is_default:
-            request.user.addresses.exclude(pk=addr.pk).update(is_default=False)
-        messages.success(request, "Address updated.")
-        return redirect("accounts:address_list")
-    return render(request, "accounts/address_form.html", {"form": form})
-
-
-@login_required
-def address_delete_view(request, pk):
-    addr = get_object_or_404(Address, pk=pk, user=request.user)
-    if request.method == "POST":
-        addr.delete()
-        messages.success(request, "Address deleted.")
-        return redirect("accounts:address_list")
-    # pass as `object` to match the template
-    return render(request, "accounts/address_confirm_delete.html", {"object": addr})
 
 
 def activate_account_view(request, uidb64, token):
@@ -164,7 +116,7 @@ def resend_activation_view(request):
     return redirect("accounts:dashboard")
 
 
-# Password reset (using Django auth views)
+# Password reset
 class MyPasswordResetView(PasswordResetView):
     template_name = "accounts/password_reset.html"
     email_template_name = "accounts/emails/password_reset_email.txt"
