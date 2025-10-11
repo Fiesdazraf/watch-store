@@ -1,12 +1,12 @@
 {
   "user_authenticated": true,
   "user_id": 1,
-  "session_key": "ajw39n0f9bcqmffpoouuvseyav4v2e1u",
+  "session_key": "ci3lj6bvykvebzcs1h0cqzoyaa9uvet6",
   "guest_carts": [],
   "user_carts": [
     {
       "id": 1,
-      "session_key": "ajw39n0f9bcqmffpoouuvseyav4v2e1u",
+      "session_key": "ci3lj6bvykvebzcs1h0cqzoyaa9uvet6",
       "num_items": 1
     }
   ]

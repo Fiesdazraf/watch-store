@@ -1,23 +1,39 @@
+{# templates/payments/payment_failed.html #}
 {% extends "base.html" %}
+{% load humanize %}
 {% block title %}پرداخت ناموفق{% endblock %}
 
 {% block content %}
 <section class="section">
   <div class="container">
-    <h1 class="title is-4">پرداخت ناموفق شد</h1>
+    <div class="box has-text-centered">
+      <h1 class="title is-4 has-text-danger mb-4">❌ پرداخت ناموفق بود</h1>
 
-    <div class="box">
-      <p>شماره سفارش: <strong>{{ order.number }}</strong></p>
-      <p>وضعیت پرداخت: <span class="tag is-danger">{{ payment.get_status_display|default:payment.status }}</span></p>
+      <p class="mb-2">شماره سفارش: <strong>{{ order.number }}</strong></p>
+      <p>
+        وضعیت پرداخت:
+        <span class="tag is-danger is-medium">
+          {{ payment.get_status_display|default:payment.status }}
+        </span>
+      </p>
+
       {% if payment.last_error %}
-        <p class="has-text-danger">خطا: {{ payment.last_error }}</p>
+        <div class="notification is-danger is-light mt-4">
+          <strong>خطا:</strong> {{ payment.last_error }}
+        </div>
       {% endif %}
-    </div>
 
-    <div class="buttons">
-      <a class="button is-warning" href="{% url 'payments:checkout' order_number=order.number %}">تلاش مجدد پرداخت</a>
-      <a class="button" href="{{ order_detail_url }}">مشاهده سفارش</a>
-      <a class="button is-light" href="{{ orders_list_url }}">بازگشت به سفارش‌ها</a>
+      <div class="buttons is-centered mt-5">
+        <a href="{% url 'payments:checkout' order_number=order.number %}" class="button is-warning">
+          🔄 تلاش مجدد پرداخت
+        </a>
+        <a href="{{ order_detail_url }}" class="button is-link is-light">
+          مشاهده سفارش
+        </a>
+        <a href="{{ orders_list_url }}" class="button is-light">
+          بازگشت به سفارش‌ها
+        </a>
+      </div>
     </div>
   </div>
 </section>

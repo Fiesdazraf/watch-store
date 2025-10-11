@@ -1,40 +1,60 @@
+{# templates/payments/checkout_payment.html #}
 {% extends "base.html" %}
+{% load humanize %}
 {% block title %}انتخاب روش پرداخت{% endblock %}
 
 {% block content %}
 <section class="section">
   <div class="container">
-    <h1 class="title is-4">پرداخت سفارش {{ order.number }}</h1>
-    <p>مبلغ قابل پرداخت: <strong>{{ order.total_payable|default:order.total_amount }}</strong></p>
-
-    <form method="post" class="mt-4 box">
-      {% csrf_token %}
-      <div class="field">
-        <label class="label">روش پرداخت</label>
-        <div class="control">
-          <label class="radio">
-            <input type="radio" name="method" value="cod" required>
-            پرداخت در محل (COD)
-          </label>
-          <label class="radio ml-4">
-            <input type="radio" name="method" value="online" required>
-            پرداخت آنلاین (درگاه شبیه‌ساز)
-          </label>
-        </div>
-      </div>
-      <div class="field mt-3">
-        <div class="control">
-          <button type="submit" class="button is-primary">ادامه</button>
-        </div>
-      </div>
-    </form>
-
-    {% if last_payment %}
-      <p class="mt-5">
-        آخرین وضعیت پرداخت: <strong>{{ last_payment.get_status_display }}</strong>
-        ({{ last_payment.created_at|date:"Y-m-d H:i" }})
+    <div class="box">
+      <h1 class="title is-4 mb-3">پرداخت سفارش <span class="has-text-info">#{{ order.number }}</span></h1>
+      <p class="mb-4">
+        مبلغ قابل پرداخت:
+        <strong class="has-text-success">
+          {{ order.total_payable|default:order.total_amount|intcomma }} ریال
+        </strong>
       </p>
-    {% endif %}
+
+      <form method="post">
+        {% csrf_token %}
+        <div class="field">
+          <label class="label">روش پرداخت</label>
+          <div class="control mt-2">
+            <label class="radio mr-4">
+              <input type="radio" name="method" value="cod" required>
+              پرداخت در محل (COD)
+            </label>
+            <label class="radio">
+              <input type="radio" name="method" value="online" required>
+              پرداخت آنلاین (درگاه شبیه‌ساز)
+            </label>
+          </div>
+        </div>
+
+        <div class="field mt-5">
+          <div class="buttons">
+            <button type="submit" class="button is-primary is-medium">
+              ادامه فرآیند پرداخت
+            </button>
+            <a href="{{ order.get_absolute_url|default:'/' }}" class="button is-light">
+              بازگشت به سفارش
+            </a>
+          </div>
+        </div>
+      </form>
+
+      {% if last_payment %}
+        <div class="notification is-light mt-6">
+          <p>
+            آخرین وضعیت پرداخت:
+            <strong>{{ last_payment.get_status_display }}</strong>
+            <span class="is-size-7 has-text-grey">
+              ({{ last_payment.created_at|date:"Y-m-d H:i" }})
+            </span>
+          </p>
+        </div>
+      {% endif %}
+    </div>
   </div>
 </section>
 {% endblock %}

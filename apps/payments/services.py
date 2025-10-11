@@ -147,15 +147,17 @@ def start_fake_online_payment(order: Order) -> tuple[Payment, str]:
     if not can_retry(order):
         raise ValueError("Max retry attempts reached.")
 
+    last = latest_payment(order)
     payment = Payment.objects.create(
         order=order,
         amount=order_amount(order),
         currency=shop_currency(),
         provider="fake",
         status=PaymentStatus.PENDING,
-        attempt_count=0,
+        attempt_count=(last.attempt_count + 1) if last else 1,
         max_attempts=3,
     )
+
     if not payment.external_id:
         payment.external_id = f"FAKE-{payment.id}"
     payment.status = PaymentStatus.PROCESSING

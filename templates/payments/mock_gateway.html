@@ -1,26 +1,39 @@
+{# templates/payments/mock_gateway.html #}
 {% extends "base.html" %}
-{% block title %}درگاه شبیه‌ساز{% endblock %}
+{% load humanize %}
+{% block title %}درگاه شبیه‌ساز پرداخت{% endblock %}
 
 {% block content %}
 <section class="section">
   <div class="container">
-    <h1 class="title is-4">درگاه شبیه‌ساز پرداخت</h1>
-    <p>سفارش: <strong>{{ order.number }}</strong></p>
-    <p>مبلغ: <strong>{{ payment.amount }} {{ payment.currency }}</strong></p>
+    <div class="box has-text-centered">
+      <h1 class="title is-4 mb-4">درگاه شبیه‌ساز پرداخت</h1>
+      <p class="mb-2">سفارش شماره: <strong>{{ order.number }}</strong></p>
+      <p class="mb-4">
+        مبلغ پرداخت: 
+        <strong class="has-text-success">
+          {{ payment.amount|intcomma }} {{ payment.currency }}
+        </strong>
+      </p>
 
-    <div class="buttons mt-5">
-      <a href="{% url 'payments:success' order_number=order.number %}" class="button is-success">
-        پرداخت موفق
-      </a>
-      <a href="{% url 'payments:failed' order_number=order.number %}" class="button is-danger">
-        پرداخت ناموفق
-      </a>
-      <a href="{% url 'payments:checkout' order_number=order.number %}" class="button">
-        لغو و بازگشت
-      </a>
-      <a href="{% url 'payments:canceled' order_number=order.number %}" class="button">
-        لغو 
-      </a>
+      <div class="buttons is-centered mt-5">
+        <a href="{% url 'payments:success' order_number=order.number %}" class="button is-success is-medium">
+          ✅ پرداخت موفق
+        </a>
+        <a href="{% url 'payments:failed' order_number=order.number %}" class="button is-danger is-medium">
+          ❌ پرداخت ناموفق
+        </a>
+        <a href="{% url 'payments:canceled' order_number=order.number %}" class="button is-light">
+          لغو پرداخت
+        </a>
+        <a href="{% url 'payments:checkout' order_number=order.number %}" class="button is-link is-light">
+          بازگشت به انتخاب روش
+        </a>
+      </div>
+
+      <p class="has-text-grey mt-5 is-size-7">
+        (این صفحه شبیه‌ساز است و پرداخت واقعی انجام نمی‌شود)
+      </p>
     </div>
   </div>
 </section>

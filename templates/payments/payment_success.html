@@ -1,22 +1,40 @@
+{# templates/payments/payment_success.html #}
 {% extends "base.html" %}
+{% load humanize %}
 {% block title %}پرداخت موفق{% endblock %}
 
 {% block content %}
 <section class="section">
   <div class="container">
-    <h1 class="title is-4">پرداخت با موفقیت انجام شد 🎉</h1>
+    <div class="box has-text-centered">
+      <h1 class="title is-4 has-text-success mb-4">🎉 پرداخت با موفقیت انجام شد</h1>
 
-    <div class="box">
-      <p>شماره سفارش: <strong>{{ order.number }}</strong></p>
-      <p>مبلغ: <strong>{{ payment.amount }} {{ payment.currency }}</strong></p>
+      <p class="mb-2">شماره سفارش: <strong>{{ order.number }}</strong></p>
+      <p class="mb-2">
+        مبلغ پرداخت‌شده:
+        <strong class="has-text-success">
+          {{ payment.amount|intcomma }} {{ payment.currency }}
+        </strong>
+      </p>
       {% if payment.external_id %}
-        <p>کد تراکنش: <code>{{ payment.external_id }}</code></p>
+        <p class="mb-4">
+          کد تراکنش:
+          <code>{{ payment.external_id }}</code>
+        </p>
       {% endif %}
-    </div>
 
-    <div class="buttons">
-      <a class="button is-primary" href="{{ order_detail_url }}">مشاهده سفارش</a>
-      <a class="button" href="{{ orders_list_url }}">بازگشت به سفارش‌ها</a>
+      <div class="notification is-success is-light mt-5">
+        <p>سفارش شما با موفقیت ثبت و پرداخت شد.</p>
+      </div>
+
+      <div class="buttons is-centered mt-5">
+        <a href="{{ order_detail_url }}" class="button is-primary">
+          مشاهده سفارش
+        </a>
+        <a href="{{ orders_list_url }}" class="button is-light">
+          بازگشت به سفارش‌ها
+        </a>
+      </div>
     </div>
   </div>
 </section>
