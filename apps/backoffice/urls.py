@@ -8,6 +8,7 @@ from .views import (
     export_sales_pdf_view,
     export_sales_xlsx_view,
     health,
+    invoices_list_view,
     kpis_api,
     orders_status_api,
     payments_breakdown_api,
@@ -34,4 +35,5 @@ urlpatterns = [
     path("export-sales-xlsx/", export_sales_xlsx_view, name="export_sales_xlsx"),
     path("export-sales-pdf/", export_sales_pdf_view, name="export_sales_pdf"),
     path("logout/", LogoutView.as_view(next_page="accounts:login"), name="logout"),
+    path("invoices/", invoices_list_view, name="invoices_list"),
 ]

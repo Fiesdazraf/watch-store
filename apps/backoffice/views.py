@@ -8,7 +8,7 @@ from typing import Any
 
 from django.contrib import messages
 from django.core.exceptions import FieldDoesNotExist
-from django.db.models import Count, Prefetch, Sum
+from django.db.models import Count, Prefetch, Q, Sum
 from django.http import HttpRequest, HttpResponse, HttpResponseBadRequest, JsonResponse
 from django.shortcuts import get_object_or_404, redirect, render
 from django.template.loader import render_to_string
@@ -16,6 +16,7 @@ from django.urls import reverse
 from django.utils import timezone
 from django.views.decorators.http import require_GET, require_POST
 
+from apps.invoices.models import Invoice
 from apps.orders.models import Order, OrderItem, OrderStatusLog
 from apps.orders.services import (
     get_orders_counters,
@@ -111,6 +112,39 @@ def health(_: HttpRequest) -> HttpResponse:
     return HttpResponse("ok")
 
 
+@staff_required
+@require_GET
+def invoices_list_view(request: HttpRequest) -> HttpResponse:
+    q = (request.GET.get("q") or "").strip()
+    st = (request.GET.get("status") or "").strip()
+    start = request.GET.get("start")
+    end = request.GET.get("end")
+
+    qs = Invoice.objects.select_related("order").order_by("-issued_at")
+
+    if q:
+        # 🔍 جستجو بر اساس شماره فاکتور یا شماره سفارش یا ID سفارش
+        qs = qs.filter(
+            Q(number__icontains=q) | Q(order__number__icontains=q) | Q(order__id__icontains=q)
+        )
+
+    if st:
+        qs = qs.filter(status=st)
+    if start:
+        qs = qs.filter(issued_at__date__gte=start)
+    if end:
+        qs = qs.filter(issued_at__date__lte=end)
+
+    context = {
+        "query": q,
+        "status": st,
+        "start": start or "",
+        "end": end or "",
+        "invoices": qs[:200],  # limit results for simplicity
+    }
+    return render(request, "backoffice/invoices_list.html", context)
+
+
 # ----------------------------- Dashboard -----------------------------
 @staff_required
 @require_GET
@@ -128,20 +162,43 @@ def dashboard_view(request: HttpRequest) -> HttpResponse:
     sales_kpis = get_sales_kpis()
     orders_counters = get_orders_counters()
     users_counters = get_users_counters()
+    invoices_counters = get_invoices_counters()  # 👈 اضافه شد
+    recent_invoices = Invoice.objects.order_by("-issued_at")[:10]  # 👈 جدول جدید
 
     context = {
         "recent_orders": recent_orders,
+        "recent_invoices": recent_invoices,  # 👈 اضافه شد
         "sales_api_url": request.build_absolute_uri(reverse("backoffice:sales_api")),
         "set_status_url_name": "backoffice:set_status",
         "sales_kpis": sales_kpis,
         "orders_counters": orders_counters,
         "users_counters": users_counters,
+        "invoices_counters": invoices_counters,  # 👈 اضافه شد
         "now": timezone.now(),
         "kpi_filters": {"start": start, "end": end, "status": status},
     }
     return render(request, "backoffice/dashboard.html", context)
 
 
+# ----------------------------- Invoices KPI helper -----------------------------
+def get_invoices_counters() -> dict:
+    """Aggregated stats for invoices (used in dashboard KPIs)."""
+    total = Invoice.objects.count()
+    total_amount = Invoice.objects.aggregate(total=Sum("amount"))["total"] or 0
+    paid = Invoice.objects.filter(status="paid").count()
+    unpaid = Invoice.objects.exclude(status="paid").count()
+    paid_ratio = round((paid / total) * 100, 1) if total else 0
+
+    return {
+        "total": total,
+        "total_amount": total_amount,
+        "paid": paid,
+        "unpaid": unpaid,
+        "paid_ratio": paid_ratio,
+    }
+
+
+# ----------------------------- KPIs API -----------------------------
 @staff_required
 @require_GET
 def kpis_api(_: HttpRequest) -> JsonResponse:
@@ -155,10 +212,12 @@ def kpis_api(_: HttpRequest) -> JsonResponse:
         except Exception:
             pass  # fallback below
 
+    # --- Local KPI composition ---
     data = {
         "sales_kpis": get_sales_kpis(),
         "orders_counters": get_orders_counters(),
         "users_counters": get_users_counters(),
+        "invoices_counters": get_invoices_counters(),  # 👈 اضافه شد
     }
     return JsonResponse(data)
 

@@ -6,10 +6,8 @@
   <meta name="viewport" content="width=device-width,initial-scale=1" />
   <title>{% block title %}پنل مدیریت | Watch Store{% endblock %}</title>
 
-  {# استایل اصلی بک‌آفیس: اگر Bulma سفارشی دارید همین را جایگزین کنید #}
   <link rel="stylesheet" href="{% static 'shop/bulma.css' %}">
   <style>
-    /* Backoffice light polish */
     :root {
       --bo-bg: #0f1220;
       --bo-card: #171a2b;
@@ -33,9 +31,7 @@
     .menu-list a.is-active { background: rgba(201,162,39,0.12); color: var(--bo-text); }
     .tag.is-light { background: rgba(255,255,255,.08); color: var(--bo-text); border: 1px solid rgba(255,255,255,.06); }
     .table tr:hover { background: rgba(255,255,255,.03); }
-    .toast {
-      position: fixed; inset-inline-start: 1rem; inset-block-start: 1rem; z-index: 50;
-    }
+    .toast { position: fixed; inset-inline-start: 1rem; inset-block-start: 1rem; z-index: 50; }
   </style>
 
   {% block extra_css %}{% endblock %}
@@ -56,17 +52,14 @@
     <div id="boNav" class="navbar-menu">
       <div class="navbar-start">
         <a class="navbar-item" href="{% url 'backoffice:dashboard' %}">داشبورد</a>
-        {# اگر مسیر دارید نگه دارید، اگر ندارید حذف کنید #}
         <a class="navbar-item" href="{% url 'orders:list' %}">سفارش‌ها</a>
-        {% comment %}<a class="navbar-item" href="{% url 'catalog:product_list' %}">محصولات</a>{% endcomment %}
+        <a class="navbar-item" href="{% url 'backoffice:invoices_list' %}">فاکتورها</a>  <!-- 👈 جدید -->
       </div>
       <div class="navbar-end">
         <div class="navbar-item">
           <div class="buttons">
-            {# اگر auth دارید: نام کاربر #}
             {% if request.user.is_authenticated %}
               <span class="tag is-light is-medium">{{ request.user.get_full_name|default:request.user.get_username }}</span>
-              {# مسیر خروج خودتان را جایگزین کنید #}
               <a class="button is-small is-light" href="{% url 'accounts:logout' %}">خروج</a>
             {% endif %}
           </div>
@@ -82,8 +75,25 @@
         <aside class="column is-2">
           <p class="menu-label">ناوبری</p>
           <ul class="menu-list">
-            <li><a class="{% if request.resolver_match.url_name == 'dashboard' %}is-active{% endif %}" href="{% url 'backoffice:dashboard' %}">داشبورد</a></li>
-            <li><a href="{% url 'orders:list' %}">سفارش‌ها</a></li>
+            <li>
+              <a class="{% if request.resolver_match.url_name == 'dashboard' %}is-active{% endif %}"
+                 href="{% url 'backoffice:dashboard' %}">
+                 داشبورد
+              </a>
+            </li>
+            <li>
+              <a class="{% if 'orders' in request.resolver_match.namespace %}is-active{% endif %}"
+                 href="{% url 'orders:list' %}">
+                 سفارش‌ها
+              </a>
+            </li>
+            <li>
+              <!-- 👇 لینک جدید به فاکتورها -->
+              <a class="{% if request.resolver_match.url_name == 'invoices_list' %}is-active{% endif %}"
+                 href="{% url 'backoffice:invoices_list' %}">
+                 فاکتورها
+              </a>
+            </li>
             {# <li><a href="{% url 'catalog:product_list' %}">محصولات</a></li> #}
             {# <li><a href="{% url 'customers:list' %}">مشتریان</a></li> #}
           </ul>
@@ -91,7 +101,6 @@
 
         <!-- Main -->
         <main class="column is-10">
-          <!-- Django messages -->
           {% if messages %}
           <div class="toast">
             {% for message in messages %}
@@ -126,7 +135,6 @@
     });
   </script>
 
-  {# اگر در backoffice نمودار دارید #}
   <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.4/dist/chart.umd.min.js" defer></script>
 
   {% block extra_js %}{% endblock %}

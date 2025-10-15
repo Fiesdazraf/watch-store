@@ -15,7 +15,7 @@ function shell {
 }
 
 function test {
-    pytest @args
+    pytest -v --ds=config.settings.test --reuse-db @args
 }
 
 function check { 

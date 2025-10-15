@@ -45,6 +45,7 @@ urlpatterns = [
     # mount orders and backoffice under explicit prefixes (avoid empty includes)
     path("orders/", include(("apps.orders.urls", "orders"), namespace="orders")),
     path("backoffice/", include(("apps.backoffice.urls", "backoffice"), namespace="backoffice")),
+    path("invoices/", include(("apps.invoices.urls", "invoices"), namespace="invoices")),
     # optional: keep a short /products/ endpoint that renders product list (cached)
     path("products/", cached_product_list, name="product_list_short"),
     # smart root dispatch (public landing or staff dashboard)

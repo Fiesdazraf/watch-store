@@ -1,0 +1,24 @@
+{% extends "backoffice/base.html" %}
+{% block title %}Invoices{% endblock %}
+{% block content %}
+  <section class="section">
+    <h1 class="title">Invoices List</h1>
+    <table class="table is-fullwidth is-striped">
+      <thead>
+        <tr><th>ID</th><th>Number</th><th>Status</th><th>Issued At</th></tr>
+      </thead>
+      <tbody>
+        {% for invoice in invoices %}
+          <tr>
+            <td>{{ invoice.id }}</td>
+            <td>{{ invoice.number }}</td>
+            <td>{{ invoice.status }}</td>
+            <td>{{ invoice.issued_at|date:"Y-m-d H:i" }}</td>
+          </tr>
+        {% empty %}
+          <tr><td colspan="4">No invoices found.</td></tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </section>
+{% endblock %}

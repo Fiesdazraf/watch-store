@@ -1,29 +1,31 @@
-# config/settings/test.py
 """
-Settings for running tests.
+Settings for running automated tests.
 """
 
-# Wildcard import is acceptable in settings; silence Ruff F401/F403.
-from .base import *  # noqa: F401, F403
+from typing import TYPE_CHECKING
 
-# Explicitly set to avoid F405 on star imports
-ROOT_URLCONF = "config.urls"
+from .base import *  # noqa: F401,F403
 
-# Use fast SQLite for tests
+if TYPE_CHECKING:
+    from .base import BASE_DIR, INSTALLED_APPS, MIDDLEWARE
+
+print("Using TEST SETTINGS with test_db.sqlite3")
+
+DEBUG = False
+SECRET_KEY = "test-key"
+ALLOWED_HOSTS = ["*"]
+
+# ---------- Database ----------
 DATABASES = {
     "default": {
         "ENGINE": "django.db.backends.sqlite3",
-        "NAME": ":memory:",  # super fast; change to file if needed
+        "NAME": BASE_DIR / "test_db.sqlite3",
     }
 }
 
-# Speed up hashing (optional; also possible in conftest.py)
+# ---------- Speed Optimizations ----------
 PASSWORD_HASHERS = ["django.contrib.auth.hashers.MD5PasswordHasher"]
-
-# Email backend for tests
 EMAIL_BACKEND = "django.core.mail.backends.locmem.EmailBackend"
-
-# Cache dummy
 CACHES = {
     "default": {
         "BACKEND": "django.core.cache.backends.locmem.LocMemCache",
@@ -31,22 +33,24 @@ CACHES = {
     }
 }
 
-# If you have a custom user model, define it explicitly
-# AUTH_USER_MODEL = "accounts.User"
-
-# Make staticfiles forgiving in tests
+# ---------- Static ----------
 STATICFILES_STORAGE = "django.contrib.staticfiles.storage.StaticFilesStorage"
-
-from django.contrib.staticfiles.finders import AppDirectoriesFinder, FileSystemFinder  # noqa
-
-STATICFILES_DIRS = getattr(globals(), "STATICFILES_DIRS", [])
 STATICFILES_FINDERS = [
     "django.contrib.staticfiles.finders.FileSystemFinder",
     "django.contrib.staticfiles.finders.AppDirectoriesFinder",
 ]
 
-# ---- Force simple static storage in tests even if base uses STORAGES/WhiteNoise
 STORAGES = globals().get("STORAGES", {}) or {}
 STORAGES["staticfiles"] = {
     "BACKEND": "django.contrib.staticfiles.storage.StaticFilesStorage",
 }
+
+# ---------- Remove problematic debug_toolbar ----------
+# Filter out debug_toolbar from INSTALLED_APPS and MIDDLEWARE
+INSTALLED_APPS = [app for app in INSTALLED_APPS if app != "debug_toolbar"]
+MIDDLEWARE = [
+    mw for mw in MIDDLEWARE if "debug_toolbar.middleware.DebugToolbarMiddleware" not in mw
+]
+
+# ---------- Root URL ----------
+ROOT_URLCONF = "config.urls"

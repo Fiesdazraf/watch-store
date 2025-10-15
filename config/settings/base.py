@@ -42,6 +42,7 @@ INSTALLED_APPS = [
     "apps.accounts",
     "apps.payments",
     "apps.backoffice",
+    "apps.invoices",
     "apps.core",
     # Django contrib
     "django.contrib.admin",

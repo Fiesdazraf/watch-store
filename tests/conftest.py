@@ -2,10 +2,12 @@
 import shutil
 import tempfile
 from decimal import Decimal
+from unittest.mock import patch
 
 import pytest
+from django.db.models.signals import post_save
 from django.test.utils import override_settings
-from model_bakery import baker
+from model_bakery import baker  # type: ignore
 
 from apps.customers.models import Customer
 from apps.orders.models import Order, OrderItem, OrderStatus, PaymentMethod
@@ -203,3 +205,32 @@ def staff_user(django_user_model):
         }
     )
     return user
+
+
+@pytest.fixture
+def safe_customer(db):
+    def _get_or_create(user=None, **kwargs):
+        if user is None:
+            user = baker.make("accounts.User")
+        customer, _ = Customer.objects.get_or_create(user=user, defaults=kwargs)
+        return customer
+
+    return _get_or_create
+
+
+@pytest.fixture(autouse=True, scope="session")
+def disable_customer_signal_globally():
+    """🔇 Disable the auto-create Customer signal for ALL tests globally."""
+    from apps.accounts.models import User
+    from apps.customers.signals import create_customer_profile
+
+    try:
+        post_save.disconnect(receiver=create_customer_profile, sender=User)
+    except Exception:
+        pass
+
+    with patch("apps.customers.signals.create_customer_profile", lambda *a, **kw: None):
+        yield
+
+    # بعد از پایان تست‌ها دوباره برمی‌گردونیمش
+    post_save.connect(create_customer_profile, sender=User)

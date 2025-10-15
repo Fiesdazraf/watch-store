@@ -5,6 +5,8 @@ cfgv==3.4.0
 click==8.2.1
 colorama==0.4.6
 distlib==0.4.0
+django-debug-toolbar
+django-extensions
 filelock==3.19.1
 identify==2.6.13
 iniconfig==2.1.0
@@ -22,6 +24,7 @@ Pygments==2.19.2
 pytest==8.4.2
 pytest-django==4.11.1
 python-dotenv==1.1.1
+pytest-cov
 PyYAML==6.0.2
 ruff==0.12.10
 virtualenv==20.34.0

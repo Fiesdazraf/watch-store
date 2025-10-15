@@ -1,0 +1,36 @@
+{% extends "base.html" %}
+{% load humanize %}
+{% block title %}Invoice {{ invoice.number }}{% endblock %}
+{% block content %}
+<section class="section">
+  <div class="container">
+    <h1 class="title is-4">Invoice #{{ invoice.number }}</h1>
+
+    <div class="columns">
+      <div class="column is-4">
+        <div class="box">
+          <p><strong>Status:</strong> {{ invoice.get_status_display }}</p>
+          <p><strong>Amount:</strong> {{ invoice.amount|floatformat:0|intcomma }} تومان</p>
+          <p><strong>Issued:</strong> {{ invoice.issued_at|date:"Y-m-d H:i" }}</p>
+          <p><strong>Paid:</strong> {{ invoice.paid_at|date:"Y-m-d H:i" }}</p>
+          <a class="button is-primary is-fullwidth mt-3"
+             href="{% url 'invoices:invoice_pdf' invoice.number %}">
+            Download PDF
+          </a>
+        </div>
+      </div>
+
+      <div class="column">
+        {% if invoice.order %}
+          <div class="box">
+            <h2 class="title is-6 mb-3">Order</h2>
+            <p><strong>Order #:</strong> {{ invoice.order.number }}</p>
+            <p><strong>Total:</strong> {{ invoice.order.grand_total|floatformat:0|intcomma }} تومان</p>
+            <p><strong>Placed at:</strong> {{ invoice.order.placed_at|date:"Y-m-d H:i" }}</p>
+          </div>
+        {% endif %}
+      </div>
+    </div>
+  </div>
+</section>
+{% endblock %}
