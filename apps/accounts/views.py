@@ -19,7 +19,7 @@ from django.urls import reverse, reverse_lazy
 from django.utils.encoding import force_bytes
 from django.utils.http import urlsafe_base64_decode, urlsafe_base64_encode
 
-from .forms import ProfileForm, RegisterForm
+from .forms import EmailAuthenticationForm, ProfileForm, RegisterForm
 
 User = get_user_model()
 
@@ -56,7 +56,9 @@ def register_view(request):
 
 class EmailLoginView(LoginView):
     template_name = "accounts/login.html"
-    redirect_authenticated_user = True
+    authentication_form = EmailAuthenticationForm
+    redirect_authenticated_user = False  # جلوگیری از لوپ
+    next_page = "accounts:dashboard"
 
 
 @login_required

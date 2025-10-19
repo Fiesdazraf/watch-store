@@ -16,8 +16,8 @@ class InvoiceStatus(models.TextChoices):
 class InvoiceManager(models.Manager):
     def kpis(self):
         total_count = self.count()
-        total_amount = self.aggregate(total=Sum("amount"))["total"] or 0
-        paid_count = self.filter(status="paid").count()
+        total_amount = self.aggregate(total=Sum("amount"))["total"] or Decimal("0.00")
+        paid_count = self.filter(status=InvoiceStatus.PAID).count()
         paid_ratio = (paid_count / total_count * 100) if total_count else 0
         return {
             "total_invoices": total_count,
@@ -40,13 +40,19 @@ class Invoice(models.Model):
     issued_at = models.DateTimeField(default=timezone.now)
     paid_at = models.DateTimeField(null=True, blank=True)
 
+    objects = InvoiceManager()
+
     class Meta:
         ordering = ["-issued_at"]
+        verbose_name = "Invoice"
+        verbose_name_plural = "Invoices"
 
     def __str__(self):
         return f"Invoice {self.number or self.id} ({self.get_status_display()})"
 
     def save(self, *args, **kwargs):
-        if not self.number:
-            self.number = f"INV-{self.id or ''}{int(timezone.now().timestamp())}"
+        is_new = self._state.adding  # check if it's a new object
         super().save(*args, **kwargs)
+        if is_new and not self.number:
+            self.number = f"INV-{self.id}-{int(timezone.now().timestamp())}"
+            super().save(update_fields=["number"])

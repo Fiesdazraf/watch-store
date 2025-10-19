@@ -1,0 +1,98 @@
+/* static/backoffice/custom.css */
+
+/* ظاهر کلی boxها و جدول‌ها در تم تیره */
+.box {
+  background-color: #1b1c24 !important;
+  border: 1px solid #2a2b35;
+  color: #e0e0e0;
+}
+
+/* خطوط جدول */
+.table {
+  background-color: transparent;
+  color: var(--bo-text);
+}
+.table thead th {
+  color: var(--bo-primary);
+  border-color: rgba(255, 255, 255, 0.05);
+}
+.table td, .table th {
+  border-color: rgba(255, 255, 255, 0.05);
+}
+
+/* عنوان‌ها */
+.title,
+.subtitle {
+  color: #f8f8f8 !important;
+}
+
+/* رنگ دکمه‌ها */
+.button.is-link {
+  background-color: var(--bo-primary);
+  border: none;
+  color: #111;
+}
+.button.is-link:hover {
+  background-color: #d6b84a;
+}
+
+.button.is-light {
+  background-color: #2a2b35;
+  color: #f5f5f5;
+  border: 1px solid #3b3b45;
+}
+.button.is-light:hover {
+  background-color: #3a3b47;
+  border-color: #4b4c56;
+}
+
+/* ورودی‌ها */
+.input {
+  background-color: #22232d;
+  border-color: #343542;
+  color: #eee;
+}
+
+/* hover برای جدول */
+.table tr:hover {
+  background-color: #2a2b35 !important;
+}
+
+/* اعلان‌ها */
+.notification {
+  background-color: #1e2030;
+  color: #e8e8e8;
+  border: 1px solid #2c2e40;
+}
+.notification.is-success {
+  border-color: #4caf50;
+}
+.notification.is-warning {
+  border-color: #ffb300;
+}
+.notification.is-danger {
+  border-color: #f44336;
+}
+
+/* ---------------------------------------- */
+/* 🩶 فیکس ساختار کلی layout در حالت RTL   */
+/* ---------------------------------------- */
+.columns {
+  display: flex;
+  flex-wrap: nowrap;
+  flex-direction: row-reverse;  /* سایدبار سمت راست، محتوا سمت چپ */
+  align-items: flex-start;
+}
+.column {
+  flex: 1;
+}
+
+/* فاصله مناسب بین محتوا و سایدبار */
+main.column {
+  padding-inline-start: 1rem;
+}
+
+/* نمایش درست فرم و جدول در صفحه گزارش */
+form.box {
+  margin-bottom: 1.5rem;
+}

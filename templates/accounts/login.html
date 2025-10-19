@@ -37,13 +37,13 @@
           {% for field in form %}
             <div class="field">
               <label class="label" for="{{ field.id_for_label }}">
-                {% if field.name == "username" %}ایمیل{% else %}{{ field.label }}{% endif %}
+                {% if field.name == "email" %}ایمیل{% else %}{{ field.label }}{% endif %}
               </label>
               <div class="control has-icons-left">
                 {% if field.field.widget.input_type == "checkbox" %}
                   <label class="checkbox">{{ field }} {{ field.help_text }}</label>
                 {% else %}
-                  {% if field.name == "username" %}
+                  {% if field.name == "email" %}
                     {{ field|add_class:"input"|attr:"placeholder:you@example.com"|attr:"dir:ltr"|attr:"autocomplete:email"|attr:"inputmode:email" }}
                     <span class="icon is-small is-left"><i class="fas fa-envelope"></i></span>
                   {% elif field.name == "password" %}
@@ -55,7 +55,9 @@
                   {% endif %}
                 {% endif %}
               </div>
-              {% if field.errors %}<p class="help is-danger">{{ field.errors|striptags }}</p>{% endif %}
+              {% if field.errors %}
+                <p class="help is-danger">{{ field.errors|striptags }}</p>
+              {% endif %}
             </div>
           {% endfor %}
 

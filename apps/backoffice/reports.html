@@ -1,4 +1,4 @@
-{%  "backoffice/base.html" %}
+{% extends "backoffice/base.html" %}
 {% load humanize %}
 {% block title %}Reports{% endblock %}
 
@@ -62,7 +62,7 @@
 <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 <script>
   const ctx = document.getElementById('salesChart').getContext('2d');
-  const series = JSON.parse(document.getElementById('sales-series').textContent);
+  const series = JSON.parse(document.getElementById('sales-series').textContent || '[]');
   const labels = series.map(p => p.label);
   const data = series.map(p => p.value);
 
@@ -70,7 +70,15 @@
     type: 'line',
     data: {
       labels,
-      datasets: [{ label: 'Sales', data, fill: false, tension: 0.2, pointRadius: 2 }]
+      datasets: [{
+        label: 'Sales',
+        data,
+        borderColor: '#3273dc',
+        backgroundColor: 'rgba(50,115,220,0.1)',
+        fill: true,
+        tension: 0.2,
+        pointRadius: 2
+      }]
     },
     options: {
       responsive: true,

@@ -9,6 +9,7 @@ from typing import Any
 from django.contrib import messages
 from django.core.exceptions import FieldDoesNotExist
 from django.db.models import Count, Prefetch, Q, Sum
+from django.db.models.functions import TruncMonth
 from django.http import HttpRequest, HttpResponse, HttpResponseBadRequest, JsonResponse
 from django.shortcuts import get_object_or_404, redirect, render
 from django.template.loader import render_to_string
@@ -372,25 +373,46 @@ def set_status_view(request: HttpRequest, order_id: int) -> JsonResponse:
 
 
 # ----------------------------- Reports & CSV export -----------------------------
-@staff_required
+staff_required
+
+
 @require_GET
 def reports_view(request: HttpRequest) -> HttpResponse:
     today = timezone.localdate()
     default_start = today.replace(day=1)
     default_end = today
 
+    kpis = Invoice.objects.kpis()
     start, end = _parse_date_range_from_request(request, default_start, default_end)
     series: list[dict[str, Any]] = get_sales_timeseries_by_day(start, end) or []
 
-    total_sum = 0.0
-    for p in series:
-        try:
-            total_sum += float(p.get("value", 0) or 0)
-        except Exception:
-            pass
+    total_sum = sum(float(p.get("value", 0) or 0) for p in series)
 
-    context = {"start": start, "end": end, "series": series, "total_sum": total_sum}
+    context = {
+        "start": start,
+        "end": end,
+        "series": series,
+        "total_sum": total_sum,
+        "kpis": kpis,
+    }
     return render(request, "backoffice/reports.html", context)
+
+
+@staff_required
+@require_GET
+def invoices_api(request: HttpRequest) -> JsonResponse:
+    """Return monthly invoice stats as JSON for charts"""
+    data = (
+        Invoice.objects.annotate(month=TruncMonth("issued_at"))
+        .values("month")
+        .annotate(
+            total=Sum("amount"),
+            count=Count("id"),
+            paid=Count("id", filter=Q(status="paid")),
+        )
+        .order_by("month")
+    )
+    return JsonResponse(list(data), safe=False)
 
 
 @staff_required

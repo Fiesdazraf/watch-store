@@ -3,7 +3,7 @@ import re
 
 from django import forms
 from django.apps import apps
-from django.contrib.auth import get_user_model, password_validation
+from django.contrib.auth import authenticate, get_user_model, password_validation
 from django.core.exceptions import FieldDoesNotExist, ValidationError
 
 from apps.customers.models import Address
@@ -133,3 +133,30 @@ class ProfileForm(forms.ModelForm):
         if phone and not PHONE_REGEX.match(phone):
             raise forms.ValidationError("Enter a valid phone number.")
         return phone
+
+
+User = get_user_model()
+
+
+class EmailAuthenticationForm(forms.Form):
+    email = forms.EmailField(label="Email", widget=forms.EmailInput(attrs={"class": "input"}))
+    password = forms.CharField(
+        label="Password", widget=forms.PasswordInput(attrs={"class": "input"})
+    )
+
+    def __init__(self, *args, **kwargs):
+        self.request = kwargs.pop("request", None)
+        super().__init__(*args, **kwargs)
+
+    def clean(self):
+        email = self.cleaned_data.get("email")
+        password = self.cleaned_data.get("password")
+
+        if email and password:
+            self.user = authenticate(self.request, email=email, password=password)
+            if self.user is None:
+                raise forms.ValidationError("Invalid email or password.")
+        return self.cleaned_data
+
+    def get_user(self):
+        return getattr(self, "user", None)

@@ -1,39 +1,48 @@
-{# templates/customers/address_list.html #}
 {% extends "base.html" %}
 {% block title %}آدرس‌ها{% endblock %}
 {% block content %}
 <section class="section">
   <div class="container">
     <div class="level">
-      <h1 class="title is-5">آدرس‌ها</h1>
-      <a class="button is-primary" href="{% url 'customers:address_create' %}">آدرس جدید</a>
+      <div class="level-left">
+        <h1 class="title is-5">آدرس‌های من</h1>
+      </div>
+      <div class="level-right">
+        <a class="button is-primary" href="{% url 'customers:address_create' %}">آدرس جدید</a>
+      </div>
     </div>
 
     <div class="columns is-multiline">
       {% for a in addresses %}
-      <div class="column is-6">
-        <div class="box">
-          <p><strong>{{ a.full_name }}</strong></p>
-          <p>{{ a.phone }}</p>
-          <p>{{ a.line1 }} {% if a.line2 %}, {{ a.line2 }}{% endif %}</p>
-          <p>{{ a.city }}{% if a.province %}, {{ a.province }}{% endif %} {{ a.postal_code }}</p>
-          <p>{{ a.country }}</p>
-          <div class="tags mt-2">
-            {% if a.default_shipping %}<span class="tag is-info">پیش‌فرض ارسال</span>{% endif %}
-            {% if a.default_billing %}<span class="tag is-warning">پیش‌فرض صورتحساب</span>{% endif %}
-          </div>
-          <div class="buttons mt-3">
-            <a class="button is-small" href="{% url 'customers:address_update' a.pk %}">ویرایش</a>
-            <form method="post" action="{% url 'customers:address_delete' a.pk %}" style="display:inline">{% csrf_token %}
-              <button class="button is-small is-danger" type="submit">حذف</button>
-            </form>
-            <a class="button is-small is-light" href="{% url 'customers:set_default_address' a.pk 'shipping' %}">پیش‌فرض ارسال</a>
-            <a class="button is-small is-light" href="{% url 'customers:set_default_address' a.pk 'billing' %}">پیش‌فرض صورتحساب</a>
+        <div class="column is-6">
+          <div class="box">
+            <p><strong>{{ a.full_name }}</strong></p>
+            <p>{{ a.phone }}</p>
+            <p>{{ a.line1 }}{% if a.line2 %}, {{ a.line2 }}{% endif %}</p>
+            <p>{{ a.city }}{% if a.province %}, {{ a.province }}{% endif %} {{ a.postal_code }}</p>
+            <p>{{ a.country }}</p>
+            <div class="tags mt-2">
+              {% if a.default_shipping %}<span class="tag is-info">پیش‌فرض ارسال</span>{% endif %}
+              {% if a.default_billing %}<span class="tag is-warning">پیش‌فرض صورتحساب</span>{% endif %}
+            </div>
+            <div class="buttons mt-3">
+              <a class="button is-small" href="{% url 'customers:address_update' a.pk %}">ویرایش</a>
+              <form method="post" action="{% url 'customers:address_delete' a.pk %}">
+                {% csrf_token %}
+                <button class="button is-small is-danger" type="submit">حذف</button>
+              </form>
+              <a class="button is-small is-light" href="{% url 'customers:set_default_address' a.pk 'shipping' %}">پیش‌فرض ارسال</a>
+              <a class="button is-small is-light" href="{% url 'customers:set_default_address' a.pk 'billing' %}">پیش‌فرض صورتحساب</a>
+            </div>
           </div>
         </div>
-      </div>
       {% empty %}
-      <p>هیچ آدرسی ثبت نشده.</p>
+        <div class="column is-12">
+          <div class="box has-text-centered">
+            <p>هیچ آدرسی ثبت نشده است.</p>
+            <a class="button is-primary mt-3" href="{% url 'customers:address_create' %}">افزودن آدرس جدید</a>
+          </div>
+        </div>
       {% endfor %}
     </div>
   </div>

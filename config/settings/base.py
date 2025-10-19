@@ -139,6 +139,12 @@ LOGIN_URL = "accounts:login"
 LOGIN_REDIRECT_URL = "accounts:dashboard"
 LOGOUT_REDIRECT_URL = "home"  # make sure the 'home' route exists
 
+# Allow login with email (custom user model)
+AUTHENTICATION_BACKENDS = [
+    "apps.accounts.backends.EmailBackend",  # مسیر درست به فایلی که ساختی
+    "django.contrib.auth.backends.ModelBackend",
+]
+
 # ---------- Email ----------
 EMAIL_BACKEND = os.getenv(
     "EMAIL_BACKEND",

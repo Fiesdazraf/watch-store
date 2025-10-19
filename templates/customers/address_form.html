@@ -119,13 +119,9 @@
               <div class="field">
                 <label class="label" for="{{ form.country.id_for_label }}">کشور</label>
                 <div class="control">
-                  {% if form.country.field.widget.__class__.__name__ in "Select SelectMultiple" %}
-                    <div class="select is-fullwidth">
-                      {{ form.country }}
-                    </div>
-                  {% else %}
-                    {{ form.country|add_class:"input"|attr:"placeholder:Country"|attr:"autocomplete:country-name" }}
-                  {% endif %}
+                  <div class="select is-fullwidth">
+                    {{ form.country }}
+                  </div>
                 </div>
                 {% if form.country.errors %}
                   <p class="help is-danger">{{ form.country.errors|striptags }}</p>
@@ -151,7 +147,7 @@
             <button class="button is-primary" type="submit">
               ذخیره
             </button>
-            <a href="{% url 'accounts:address_list' %}" class="button is-light">انصراف</a>
+            <a href="{% url 'customers:address_list' %}" class="button is-light">انصراف</a>
           </div>
         </form>
 

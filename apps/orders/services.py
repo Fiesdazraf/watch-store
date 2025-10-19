@@ -12,6 +12,8 @@ from django.db.models import DecimalField, ExpressionWrapper, F, Sum, Value
 from django.db.models.functions import Coalesce, TruncDate
 from django.utils import timezone
 
+from apps.invoices.models import Invoice
+
 from .models import (
     Cart,
     CartItem,
@@ -391,21 +393,22 @@ class Point(TypedDict):
 
 def get_sales_timeseries_by_day(start: date, end: date) -> list[Point]:
     """
-    Returns daily sum over [start, end], inclusive.
-    Requires Order.placed_at (DateTime) and TOTAL_FIELD.
+    Returns daily total invoice amounts between [start, end], inclusive.
+    Uses Invoice.issued_at and amount.
     """
     start_dt = timezone.make_aware(datetime.combine(start, datetime.min.time()))
     end_dt = timezone.make_aware(datetime.combine(end, datetime.max.time()))
 
+    # فقط فاکتورهای پرداخت‌شده را جمع می‌کنیم
     qs = (
-        Order.objects.filter(
-            status__in={OrderStatus.PAID, "completed", "fulfilled"},
-            placed_at__gte=start_dt,
-            placed_at__lte=end_dt,
+        Invoice.objects.filter(
+            status="paid",
+            issued_at__gte=start_dt,
+            issued_at__lte=end_dt,
         )
-        .annotate(day=TruncDate("placed_at"))
+        .annotate(day=TruncDate("issued_at"))
         .values("day")
-        .annotate(total=Sum(_total_annotation()))
+        .annotate(total=Sum("amount"))
         .order_by("day")
     )
 
