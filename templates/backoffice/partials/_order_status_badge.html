@@ -1,11 +1,13 @@
-{% with s=status|stringformat:"s" %}
+{% with s=status|stringformat:"s"|lower %}
   {% if s in "paid,completed,fulfilled" %}
-    <span class="tag is-success">{{ s }}</span>
+    <span class="tag is-success is-light">✅ {{ s|title }}</span>
   {% elif s in "pending,awaiting_payment,processing" %}
-    <span class="tag is-warning">{{ s }}</span>
-  {% elif s in "cancelled,canceled,refunded" %}
-    <span class="tag is-danger">{{ s }}</span>
+    <span class="tag is-warning is-light">⏳ {{ s|title }}</span>
+  {% elif s in "canceled,cancelled,refunded" %}
+    <span class="tag is-danger is-light">❌ {{ s|title }}</span>
+  {% elif s in "shipped,delivered,sent" %}
+    <span class="tag is-info is-light">🚚 {{ s|title }}</span>
   {% else %}
-    <span class="tag is-light">{{ s }}</span>
+    <span class="tag is-light">{{ s|title }}</span>
   {% endif %}
 {% endwith %}

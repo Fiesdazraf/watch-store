@@ -1,16 +1,15 @@
-{# templates/backoffice/dashboard.html #}
 {% extends "backoffice/base.html" %}
 {% load humanize %}
 
-{% block title %}داشبورد مدیریتی{% endblock %}
+{% block title %}داشبورد مدیریتی | Watch-Store{% endblock %}
 
 {% block content %}
 <section class="section pt-5">
   <div class="container">
 
-    <h1 class="title is-4 mb-5">داشبورد مدیریتی فروشگاه</h1>
+    <h1 class="title is-4 mb-5">📊 داشبورد مدیریتی فروشگاه</h1>
 
-    <!-- Filters -->
+    <!-- 🔹 Filters -->
     <form method="get" class="box mb-5">
       <div class="columns is-multiline">
         <div class="column is-one-quarter">
@@ -30,7 +29,7 @@
               <option value="paid" {% if kpi_filters.status == 'paid' %}selected{% endif %}>پرداخت‌شده</option>
               <option value="shipped" {% if kpi_filters.status == 'shipped' %}selected{% endif %}>ارسال‌شده</option>
               <option value="completed" {% if kpi_filters.status == 'completed' %}selected{% endif %}>تکمیل‌شده</option>
-              <option value="canceled" {% if kpi_filters.status == 'canceled' %}selected{% endif %}>لغوشده</option>
+              <option value="canceled" {% if kpi_filters.status == 'canceled' %}selected{% endif %}>لغو‌شده</option>
             </select>
           </div>
         </div>
@@ -41,15 +40,44 @@
       </div>
     </form>
 
-    <!-- KPIs -->
+    <!-- 🔹 KPI Summary -->
     <div class="columns is-multiline mb-5">
-      <div class="column is-3"><div class="box has-text-centered"><p class="heading">مجموع فروش</p><p class="title is-4">{{ sales_kpis.total_revenue|floatformat:0|intcomma }} تومان</p></div></div>
-      <div class="column is-3"><div class="box has-text-centered"><p class="heading">تعداد سفارش‌ها</p><p class="title is-4">{{ sales_kpis.total_orders|intcomma }}</p></div></div>
-      <div class="column is-3"><div class="box has-text-centered"><p class="heading">میانگین ارزش سفارش</p><p class="title is-4">{{ sales_kpis.avg_order_value|floatformat:0|intcomma }} تومان</p></div></div>
-      <div class="column is-3"><div class="box has-text-centered"><p class="heading">تعداد مشتریان</p><p class="title is-4">{{ sales_kpis.total_customers|intcomma }}</p></div></div>
+      <div class="column is-3">
+        <div class="box has-text-centered">
+          <p class="heading">مجموع فروش</p>
+          <p class="title is-4">
+            {{ sales_kpis.total_revenue|floatformat:0|intcomma }}
+            <span class="is-size-6 has-text-grey-light">تومان</span>
+          </p>
+        </div>
+      </div>
+
+      <div class="column is-3">
+        <div class="box has-text-centered">
+          <p class="heading">تعداد سفارش‌ها</p>
+          <p class="title is-4">{{ sales_kpis.total_orders|intcomma }}</p>
+        </div>
+      </div>
+
+      <div class="column is-3">
+        <div class="box has-text-centered">
+          <p class="heading">میانگین ارزش سفارش</p>
+          <p class="title is-4">
+            {{ sales_kpis.avg_order_value|floatformat:0|intcomma }}
+            <span class="is-size-6 has-text-grey-light">تومان</span>
+          </p>
+        </div>
+      </div>
+
+      <div class="column is-3">
+        <div class="box has-text-centered">
+          <p class="heading">تعداد مشتریان</p>
+          <p class="title is-4">{{ sales_kpis.total_customers|intcomma }}</p>
+        </div>
+      </div>
     </div>
 
-    <!-- Orders / Users / Invoices counters -->
+    <!-- 🔹 Counters -->
     <div class="columns is-multiline mb-5">
       <div class="column is-3"><div class="box has-text-centered"><p class="heading">سفارش‌های جدید</p><p class="title is-4">{{ orders_counters.new|intcomma }}</p></div></div>
       <div class="column is-3"><div class="box has-text-centered"><p class="heading">در حال پردازش</p><p class="title is-4">{{ orders_counters.processing|intcomma }}</p></div></div>
@@ -62,28 +90,36 @@
       <div class="column is-3"><div class="box has-text-centered"><p class="heading">جمع مبلغ فاکتورها</p><p class="title is-4">{{ invoices_counters.total_amount|floatformat:0|intcomma }} تومان</p></div></div>
     </div>
 
-    <!-- Sales trend -->
+    <!-- 🔹 Sales trend -->
     <div class="box mb-5">
-      <h2 class="title is-5 mb-3">نمودار فروش ۳۰ روز اخیر</h2>
+      <h2 class="title is-5 mb-3">📈 نمودار فروش ۳۰ روز اخیر</h2>
       <div class="chart-wrap"><canvas id="salesChart"></canvas></div>
     </div>
 
-    <!-- Payment & Order charts -->
+    <!-- 🔹 Payment & Order charts -->
     <div class="columns mb-5">
-      <div class="column"><div class="box"><h2 class="title is-6 mb-2">روش‌های پرداخت</h2><div class="chart-wrap"><canvas id="paymentsBreakdownChart"></canvas></div></div></div>
-      <div class="column"><div class="box"><h2 class="title is-6 mb-2">وضعیت سفارش‌ها</h2><div class="chart-wrap"><canvas id="ordersStatusChart"></canvas></div></div></div>
+      <div class="column">
+        <div class="box">
+          <h2 class="title is-6 mb-2">روش‌های پرداخت</h2>
+          <div class="chart-wrap"><canvas id="paymentsBreakdownChart"></canvas></div>
+        </div>
+      </div>
+      <div class="column">
+        <div class="box">
+          <h2 class="title is-6 mb-2">وضعیت سفارش‌ها</h2>
+          <div class="chart-wrap"><canvas id="ordersStatusChart"></canvas></div>
+        </div>
+      </div>
     </div>
 
-    <!-- ✅ Final Recent Invoices -->
+    <!-- 🔹 Recent Invoices -->
     <div class="box mb-5">
       <div class="level mb-3">
         <div class="level-left">
-          <h2 class="title is-5 mb-0">فاکتورهای اخیر</h2>
+          <h2 class="title is-5 mb-0">🧾 فاکتورهای اخیر</h2>
         </div>
         <div class="level-right">
-          <a href="{% url 'backoffice:invoices_list' %}" class="button is-small is-light">
-            مشاهده‌ی همه فاکتورها
-          </a>
+          <a href="{% url 'backoffice:invoices_list' %}" class="button is-small is-light">مشاهده همه</a>
         </div>
       </div>
 
@@ -101,34 +137,25 @@
           <tbody>
             {% for inv in recent_invoices %}
               <tr>
-                <!-- 👇 شماره فاکتور لینک‌دار شد -->
-                <td>
-                  <a href="{% url 'invoices:invoice_detail' inv.number %}" class="has-text-link">
-                    {{ inv.number }}
-                  </a>
-                </td>
+                <td><a href="{% url 'invoices:invoice_detail' inv.number %}" class="has-text-link">{{ inv.number }}</a></td>
                 <td>{{ inv.amount|floatformat:0|intcomma }} تومان</td>
                 <td>
-                  <span class="tag is-{{ inv.status|yesno:'success,warning,danger' }}">
-                    {{ inv.get_status_display }}
-                  </span>
+                  {% include "backoffice/partials/_order_status_badge.html" with status=inv.status %}
                 </td>
                 <td>{{ inv.issued_at|date:"Y-m-d H:i" }}</td>
                 <td>{{ inv.paid_at|date:"Y-m-d H:i" }}</td>
               </tr>
             {% empty %}
-              <tr>
-                <td colspan="5" class="has-text-centered">هیچ فاکتوری ثبت نشده است.</td>
-              </tr>
+              <tr><td colspan="5" class="has-text-centered">هیچ فاکتوری ثبت نشده است.</td></tr>
             {% endfor %}
           </tbody>
         </table>
       </div>
     </div>
 
-    <!-- Recent Orders -->
+    <!-- 🔹 Recent Orders -->
     <div class="box">
-      <h2 class="title is-5 mb-3">سفارش‌های اخیر</h2>
+      <h2 class="title is-5 mb-3">📦 سفارش‌های اخیر</h2>
       <div class="table-container">
         <table class="table is-fullwidth is-striped is-hoverable">
           <thead>
@@ -143,11 +170,11 @@
           <tbody>
             {% for o in recent_orders %}
               <tr>
-                <td>{{ o.number }}</td>
+                <td><a href="{% url 'orders:detail' o.number %}" class="has-text-link">{{ o.number }}</a></td>
                 <td>{{ o.customer }}</td>
                 <td>{{ o.placed_at|date:"Y-m-d H:i" }}</td>
-                <td>{{ o.grand_total|floatformat:0|intcomma }}</td>
-                <td>{{ o.get_status_display }}</td>
+                <td>{{ o.grand_total|floatformat:0|intcomma }} تومان</td>
+                <td>{% include "backoffice/partials/_order_status_badge.html" with status=o.status %}</td>
               </tr>
             {% empty %}
               <tr><td colspan="5" class="has-text-centered">سفارشی یافت نشد.</td></tr>
@@ -162,36 +189,44 @@
 {% endblock %}
 
 {% block extra_js %}
-  {{ block.super }}
-  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-  <script>
-    const KPI_FILTERS = {{ kpi_filters|default:"{}"|safe }};
-    function makeURL(base) {
-      const url = new URL(base, window.location.origin);
-      for (const [k, v] of Object.entries(KPI_FILTERS)) if (v) url.searchParams.set(k, v);
-      return url.toString();
-    }
-    fetch(makeURL("{{ sales_api_url }}"))
-      .then(r => r.json())
-      .then(data => {
-        new Chart(document.getElementById('salesChart'), {
-          type: 'line',
-          data: { labels: data.labels || [], datasets: [
-            { label: 'مبلغ فروش', data: data.amounts, tension: 0.3 },
-            { label: 'تعداد سفارش‌ها', data: data.counts, tension: 0.3 }
-          ]},
-          options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { position: 'bottom' } }, scales: { y: { beginAtZero: true } } }
-        });
+{{ block.super }}
+<script>
+  const KPI_FILTERS = {{ kpi_filters|default:"{}"|safe }};
+  function makeURL(base) {
+    const url = new URL(base, window.location.origin);
+    for (const [k, v] of Object.entries(KPI_FILTERS)) if (v) url.searchParams.set(k, v);
+    return url.toString();
+  }
+  fetch(makeURL("{{ sales_api_url }}"))
+    .then(r => r.json())
+    .then(data => {
+      new Chart(document.getElementById('salesChart'), {
+        type: 'line',
+        data: { labels: data.labels || [], datasets: [
+          { label: 'مبلغ فروش', data: data.amounts, tension: 0.3, borderColor: '#c9a227', backgroundColor: 'rgba(201,162,39,0.2)' },
+          { label: 'تعداد سفارش‌ها', data: data.counts, tension: 0.3, borderColor: '#6c5ce7', backgroundColor: 'rgba(108,92,231,0.2)' }
+        ]},
+        options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { position: 'bottom', labels: { color: '#e9edf5' } } }, scales: { y: { beginAtZero: true, ticks: { color: '#9aa3b2' } }, x: { ticks: { color: '#9aa3b2' } } } }
       });
-    fetch(makeURL("{% url 'backoffice:payments_breakdown_api' %}"))
-      .then(r => r.json())
-      .then(data => new Chart(document.getElementById('paymentsBreakdownChart'), { type: 'bar', data, options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { position: 'bottom' } } } }));
-    fetch(makeURL("{% url 'backoffice:orders_status_api' %}"))
-      .then(r => r.json())
-      .then(data => new Chart(document.getElementById('ordersStatusChart'), { type: 'bar', data, options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { position: 'bottom' } } } }));
-  </script>
-  <style>
-    .chart-wrap { position: relative; min-height: 300px; height: 340px; }
-    @media (max-width: 768px) { .chart-wrap { height: 280px; } }
-  </style>
+    });
+
+  fetch(makeURL("{% url 'backoffice:payments_breakdown_api' %}"))
+    .then(r => r.json())
+    .then(data => new Chart(document.getElementById('paymentsBreakdownChart'), {
+      type: 'doughnut', data,
+      options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { position: 'bottom', labels: { color: '#e9edf5' } } } }
+    }));
+
+  fetch(makeURL("{% url 'backoffice:orders_status_api' %}"))
+    .then(r => r.json())
+    .then(data => new Chart(document.getElementById('ordersStatusChart'), {
+      type: 'bar', data,
+      options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { position: 'bottom', labels: { color: '#e9edf5' } } }, scales: { x: { ticks: { color: '#9aa3b2' } }, y: { ticks: { color: '#9aa3b2' } } } }
+    }));
+</script>
+
+<style>
+  .chart-wrap { position: relative; min-height: 300px; height: 340px; }
+  @media (max-width: 768px) { .chart-wrap { height: 280px; } }
+</style>
 {% endblock %}

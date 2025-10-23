@@ -1,9 +1,15 @@
 {# templates/partials/_header.html #}
-<nav class="navbar is-white has-shadow" role="navigation" aria-label="main navigation">
-  <div class="container">
-    <div class="navbar-brand">
-      <a class="navbar-item has-text-weight-bold" href="/">🕒 Watch Store</a>
+{% load static %}
 
+<nav class="navbar has-shadow is-white" role="navigation" aria-label="main navigation">
+  <div class="container">
+    <!-- برند -->
+    <div class="navbar-brand">
+      <a class="navbar-item has-text-weight-bold is-size-5" href="/">
+        🕒 <span class="ml-1">Watch Store</span>
+      </a>
+
+      <!-- Burger for mobile -->
       <a role="button" class="navbar-burger" aria-label="menu" aria-expanded="false" data-target="main-navbar">
         <span aria-hidden="true"></span>
         <span aria-hidden="true"></span>
@@ -11,17 +17,46 @@
       </a>
     </div>
 
+    <!-- لینک‌ها -->
     <div id="main-navbar" class="navbar-menu">
       <div class="navbar-end">
-        <a href="/" class="navbar-item">خانه</a>
-        <a href="{% url 'catalog:product_list' %}" class="navbar-item">فروشگاه</a>
+        <a href="/" class="navbar-item {% if request.resolver_match.url_name == 'home' %}has-text-link{% endif %}">
+          خانه
+        </a>
+        <a href="{% url 'catalog:product_list' %}"
+           class="navbar-item {% if 'catalog' in request.resolver_match.namespace %}has-text-link{% endif %}">
+          فروشگاه
+        </a>
         <a href="{% url 'orders:cart_detail' %}" class="navbar-item">
-          سبد خرید
+          <span class="icon"><i class="fas fa-shopping-cart"></i></span>
+          <span>سبد خرید</span>
           {% if cart_summary.total_qty > 0 %}
             <span class="tag is-primary is-light ml-2">{{ cart_summary.total_qty }}</span>
           {% endif %}
         </a>
-        <a href="/admin/" class="navbar-item">مدیریت</a>
+
+        {% if request.user.is_authenticated %}
+          <div class="navbar-item has-dropdown is-hoverable">
+            <a class="navbar-link">
+              <span class="icon"><i class="fas fa-user-circle"></i></span>
+              <span>{{ request.user.get_full_name|default:request.user.username }}</span>
+            </a>
+            <div class="navbar-dropdown is-right">
+              <a href="{% url 'accounts:dashboard' %}" class="navbar-item">داشبورد</a>
+              <a href="{% url 'orders:history' %}" class="navbar-item">سفارش‌های من</a>
+              <a href="{% url 'accounts:logout' %}" class="navbar-item">خروج</a>
+            </div>
+          </div>
+        {% else %}
+          <a href="{% url 'accounts:login' %}" class="navbar-item">
+            <span class="icon"><i class="fas fa-sign-in-alt"></i></span>
+            <span>ورود</span>
+          </a>
+          <a href="{% url 'accounts:register' %}" class="navbar-item">
+            <span class="icon"><i class="fas fa-user-plus"></i></span>
+            <span>ثبت‌نام</span>
+          </a>
+        {% endif %}
       </div>
     </div>
   </div>
@@ -30,13 +65,19 @@
 <script>
   // Bulma burger toggle
   document.addEventListener('DOMContentLoaded', function () {
-    const burger = document.querySelector('.navbar-burger');
-    const menu = document.getElementById('main-navbar');
-    if (burger && menu) {
-      burger.addEventListener('click', function () {
+    const burgers = Array.from(document.querySelectorAll('.navbar-burger'));
+    burgers.forEach(burger => {
+      const targetId = burger.dataset.target;
+      const target = document.getElementById(targetId);
+      burger.addEventListener('click', () => {
         burger.classList.toggle('is-active');
-        menu.classList.toggle('is-active');
+        target.classList.toggle('is-active');
       });
-    }
+    });
   });
 </script>
+
+<style>
+  .navbar-item:hover { background-color: rgba(0,0,0,0.03); }
+  .navbar-link:hover { background-color: rgba(0,0,0,0.05); }
+</style>

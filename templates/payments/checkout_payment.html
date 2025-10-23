@@ -1,38 +1,53 @@
 {# templates/payments/checkout_payment.html #}
 {% extends "base.html" %}
 {% load humanize %}
-{% block title %}انتخاب روش پرداخت{% endblock %}
+{% block title %}پرداخت سفارش{% endblock %}
 
 {% block content %}
-<section class="section">
-  <div class="container">
-    <div class="box">
-      <h1 class="title is-4 mb-3">پرداخت سفارش <span class="has-text-info">#{{ order.number }}</span></h1>
-      <p class="mb-4">
-        مبلغ قابل پرداخت:
-        <strong class="has-text-success">
-          {{ order.total_payable|default:order.total_amount|intcomma }} ریال
-        </strong>
-      </p>
+<section class="section pt-5">
+  <div class="container" style="max-width: 720px;">
 
-      <form method="post">
-        {% csrf_token %}
-        <div class="field">
-          <label class="label">روش پرداخت</label>
-          <div class="control mt-2">
-            <label class="radio mr-4">
-              <input type="radio" name="method" value="cod" required>
-              پرداخت در محل (COD)
-            </label>
-            <label class="radio">
-              <input type="radio" name="method" value="online" required>
-              پرداخت آنلاین (درگاه شبیه‌ساز)
-            </label>
-          </div>
+    <div class="card">
+      <header class="card-header">
+        <p class="card-header-title is-size-5">
+          <span class="icon mr-2"><i class="fas fa-credit-card"></i></span>
+          انتخاب روش پرداخت
+        </p>
+      </header>
+
+      <div class="card-content">
+        <div class="content mb-4">
+          <p class="is-size-6">
+            شماره سفارش:
+            <strong class="has-text-info">#{{ order.number }}</strong>
+          </p>
+          <p class="is-size-6">
+            مبلغ قابل پرداخت:
+            <strong class="has-text-weight-semibold has-text-success">
+              {{ order.total_payable|default:order.total_amount|intcomma }} تومان
+            </strong>
+          </p>
         </div>
 
-        <div class="field mt-5">
-          <div class="buttons">
+        <form method="post" novalidate>
+          {% csrf_token %}
+
+          <div class="field">
+            <label class="label">روش پرداخت را انتخاب کنید</label>
+            <div class="control mt-3">
+              <label class="radio is-size-6">
+                <input type="radio" name="method" value="cod" required>
+                پرداخت در محل (COD)
+              </label>
+              <br>
+              <label class="radio is-size-6 mt-2">
+                <input type="radio" name="method" value="online" required>
+                پرداخت آنلاین (درگاه شبیه‌سازی‌شده)
+              </label>
+            </div>
+          </div>
+
+          <div class="field mt-5 is-flex is-justify-content-space-between is-align-items-center">
             <button type="submit" class="button is-primary is-medium">
               ادامه فرآیند پرداخت
             </button>
@@ -40,21 +55,24 @@
               بازگشت به سفارش
             </a>
           </div>
-        </div>
-      </form>
+        </form>
 
-      {% if last_payment %}
-        <div class="notification is-light mt-6">
-          <p>
-            آخرین وضعیت پرداخت:
-            <strong>{{ last_payment.get_status_display }}</strong>
-            <span class="is-size-7 has-text-grey">
-              ({{ last_payment.created_at|date:"Y-m-d H:i" }})
-            </span>
-          </p>
-        </div>
-      {% endif %}
+        {% if last_payment %}
+          <article class="message is-info is-light mt-6">
+            <div class="message-body">
+              <p>
+                آخرین وضعیت پرداخت:
+                <strong>{{ last_payment.get_status_display }}</strong>
+                <span class="is-size-7 has-text-grey">
+                  ({{ last_payment.created_at|date:"Y-m-d H:i" }})
+                </span>
+              </p>
+            </div>
+          </article>
+        {% endif %}
+      </div>
     </div>
+
   </div>
 </section>
 {% endblock %}

@@ -158,11 +158,11 @@ def payment_canceled_view(request, order_number: str):
         payment.save(update_fields=["status", "updated_at"])
     return render(
         request,
-        "payments/payment_failed.html",
+        "payments/payment_canceled.html",
         {
             "order": order,
             "payment": payment,
             "order_detail_url": _order_detail_url(order),
-            "orders_list_url": _orders_list_url(),  # ← NEW
+            "orders_list_url": _orders_list_url(),
         },
     )

@@ -1,61 +1,83 @@
 {% extends "base.html" %}
-{% block title %}سبد خرید{% endblock %}
+{% load humanize static %}
+{% block title %}سبد خرید | فروشگاه ساعت{% endblock %}
 
 {% block content %}
 <section class="section pt-5">
   <div class="container">
 
-    <h1 class="title is-4">سبد خرید</h1>
+    <h1 class="title is-4 mb-5 has-text-centered">🛒 سبد خرید شما</h1>
 
     {% if items %}
-      <div class="table-container">
-        <table class="table is-fullwidth is-striped is-narrow">
-          <thead>
+      <div class="table-container mb-5">
+        <table class="table is-fullwidth is-striped is-hoverable">
+          <thead class="has-background-light">
             <tr>
               <th>محصول</th>
               <th class="has-text-centered">قیمت واحد</th>
-              <th class="has-text-centered" style="width:160px;">تعداد</th>
+              <th class="has-text-centered" style="width:150px;">تعداد</th>
               <th class="has-text-centered">جمع جزء</th>
-              <th></th>
+              <th class="has-text-centered">حذف</th>
             </tr>
           </thead>
           <tbody>
             {% for it in items %}
             <tr>
+              <!-- Product -->
               <td>
-                <div class="is-flex is-align-items-center">
-                  {% if it.product.primary_image %}
-                    <figure class="image is-48x48 ml-3">
-                      <img src="{{ it.product.primary_image.url }}" alt="{{ it.product.title }}">
-                    </figure>
-                  {% endif %}
-                  <div>
-                    <strong>{{ it.product.title }}</strong>
+                <div class="media is-align-items-center">
+                  <figure class="media-left">
+                    <p class="image is-64x64">
+                      {% if it.product.primary_image %}
+                        <img src="{{ it.product.primary_image.url }}" alt="{{ it.product.title }}">
+                      {% else %}
+                        <img src="{% static 'shop/placeholder-300x225.png' %}" alt="{{ it.product.title }}">
+                      {% endif %}
+                    </p>
+                  </figure>
+                  <div class="media-content">
+                    <p class="has-text-weight-semibold mb-1">{{ it.product.title }}</p>
                     {% if it.variant_display %}
-                      <div class="is-size-7 has-text-grey">({{ it.variant_display }})</div>
+                      <p class="is-size-7 has-text-grey">({{ it.variant_display }})</p>
                     {% endif %}
                   </div>
                 </div>
               </td>
-              <td class="has-text-centered">{{ it.unit_price }}</td>
+
+              <!-- Unit price -->
+              <td class="has-text-centered">{{ it.unit_price|intcomma }} تومان</td>
+
+              <!-- Quantity -->
               <td class="has-text-centered">
                 <form action="{% url 'orders:update_cart_item' it.id %}" method="post" class="is-inline-block">
                   {% csrf_token %}
-                  <div class="field has-addons is-justify-content-center">
+                  <div class="field has-addons is-justify-content-center mb-0">
                     <div class="control">
-                      <input class="input is-small has-text-centered" type="number" name="qty" min="0" step="1" value="{{ it.quantity }}" style="width:90px;">
+                      <input class="input is-small has-text-centered"
+                             type="number" name="qty" min="0" step="1"
+                             value="{{ it.quantity }}" style="width:80px;">
                     </div>
                     <div class="control">
-                      <button class="button is-small is-info" type="submit">به‌روزرسانی</button>
+                      <button class="button is-small is-info" type="submit"
+                              title="به‌روزرسانی">
+                        <span class="icon is-small"><i class="fas fa-sync-alt"></i></span>
+                      </button>
                     </div>
                   </div>
                 </form>
               </td>
-              <td class="has-text-centered">{{ it.subtotal }}</td>
-              <td class="has-text-right">
+
+              <!-- Subtotal -->
+              <td class="has-text-centered has-text-weight-semibold">
+                {{ it.subtotal|intcomma }} تومان
+              </td>
+
+              <!-- Remove -->
+              <td class="has-text-centered">
                 <form action="{% url 'orders:remove_cart_item' it.id %}" method="post">
                   {% csrf_token %}
-                  <button class="button is-small is-danger is-light" type="submit">حذف</button>
+                  <button class="delete is-medium has-background-danger-light"
+                          type="submit" title="حذف از سبد"></button>
                 </form>
               </td>
             </tr>
@@ -64,47 +86,59 @@
         </table>
       </div>
 
-      <div class="columns is-vcentered">
-        <div class="column">
-          <a href="{% url 'catalog:product_list' %}" class="button is-light">ادامه خرید</a>
+      <!-- Totals and actions -->
+      <div class="columns is-vcentered is-variable is-5 mt-6">
+        <!-- Continue shopping -->
+        <div class="column is-6">
+          <a href="{% url 'catalog:product_list' %}" class="button is-light">
+            ← ادامه خرید
+          </a>
         </div>
-        <div class="column is-narrow">
-          <div class="box py-3 px-4">
+
+        <!-- Summary box -->
+        <div class="column is-6 has-text-right">
+          <div class="box has-text-left is-inline-block p-4">
             <div class="is-flex is-justify-content-space-between mb-2">
               <span>جمع جزء:</span>
-              <strong>{{ cart.get_subtotal }}</strong>
+              <strong>{{ cart.get_subtotal|intcomma }} تومان</strong>
             </div>
             {% if cart.shipping_cost %}
             <div class="is-flex is-justify-content-space-between mb-2">
               <span>هزینه ارسال:</span>
-              <strong>{{ cart.shipping_cost }}</strong>
+              <strong>{{ cart.shipping_cost|intcomma }} تومان</strong>
             </div>
             {% endif %}
             {% if cart.discount_total %}
-            <div class="is-flex is-justify-content-space-between mb-2">
+            <div class="is-flex is-justify-content-space-between mb-2 has-text-danger">
               <span>تخفیف:</span>
-              <strong>-{{ cart.discount_total }}</strong>
+              <strong>-{{ cart.discount_total|intcomma }} تومان</strong>
             </div>
             {% endif %}
             <hr class="my-2">
             <div class="is-flex is-justify-content-space-between">
               <span>مبلغ نهایی:</span>
-              <strong class="has-text-weight-bold">{{ cart.get_total }}</strong>
+              <strong class="has-text-weight-bold has-text-primary">
+                {{ cart.get_total|intcomma }} تومان
+              </strong>
             </div>
           </div>
-          <!-- No checkout button yet -->
+
+          <a href="{% url 'orders:checkout' %}"
+             class="button is-primary is-medium mt-4">
+            <span class="icon"><i class="fas fa-credit-card"></i></span>
+            <span>ادامه به تسویه‌حساب</span>
+          </a>
         </div>
       </div>
 
     {% else %}
-      <article class="message is-info">
-        <div class="message-body">
-          سبد خرید شما خالی است.
-          <a href="{% url 'catalog:product_list' %}" class="button is-small is-link ml-2">رفتن به فروشگاه</a>
-        </div>
-      </article>
+      <div class="notification is-info is-light has-text-centered py-6">
+        <p class="is-size-5 mb-3">سبد خرید شما خالی است 🛒</p>
+        <a href="{% url 'catalog:product_list' %}" class="button is-link is-light">
+          رفتن به فروشگاه
+        </a>
+      </div>
     {% endif %}
-
   </div>
 </section>
 {% endblock %}

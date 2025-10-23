@@ -1,1 +1,1 @@
-Activate your account on {{ site_name }}
+فعال‌سازی حساب کاربری شما در {{ site_name }}

@@ -1,46 +1,64 @@
 {% extends "base.html" %}
-{% block title %}سوابق سفارش{% endblock %}
+{% load humanize %}
+{% block title %}سوابق سفارش‌ها | فروشگاه ساعت{% endblock %}
 
 {% block content %}
 <section class="section pt-5">
   <div class="container">
 
-    <h1 class="title is-4">سفارش‌های شما</h1>
+    <h1 class="title is-4 mb-5">🧾 سوابق سفارش‌های شما</h1>
 
     {% if orders %}
       <div class="table-container">
-        <table class="table is-fullwidth is-striped is-narrow">
-          <thead>
+        <table class="table is-fullwidth is-striped is-hoverable">
+          <thead class="has-background-light">
             <tr>
-              <th>شماره</th>
+              <th>شماره سفارش</th>
               <th class="has-text-centered">تاریخ</th>
               <th class="has-text-centered">وضعیت</th>
               <th class="has-text-centered">مبلغ نهایی</th>
-              <th></th>
+              <th class="has-text-centered">جزئیات</th>
             </tr>
           </thead>
           <tbody>
             {% for o in orders %}
             <tr>
-              <td>{{ o.number }}</td>
+              <td class="has-text-weight-semibold">#{{ o.number }}</td>
               <td class="has-text-centered">{{ o.placed_at|date:"Y-m-d H:i" }}</td>
-              <td class="has-text-centered">{{ o.get_status_display }}</td>
-              <td class="has-text-centered">{{ o.grand_total }}</td>
-              <td class="has-text-right">
-                <a href="{% url 'orders:order_detail' o.number %}" class="button is-small is-link is-light">نمایش</a>
+
+              <td class="has-text-centered">
+                {% if o.is_paid %}
+                  <span class="tag is-success is-light">پرداخت‌شده</span>
+                {% elif o.get_status_display == "لغو شده" %}
+                  <span class="tag is-danger is-light">لغو شده</span>
+                {% else %}
+                  <span class="tag is-warning is-light">{{ o.get_status_display }}</span>
+                {% endif %}
+              </td>
+
+              <td class="has-text-centered has-text-weight-semibold">
+                {{ o.grand_total|intcomma }} تومان
+              </td>
+
+              <td class="has-text-centered">
+                <a href="{% url 'orders:order_detail' o.number %}" class="button is-small is-link is-light">
+                  <span class="icon"><i class="fas fa-eye"></i></span>
+                  <span>مشاهده</span>
+                </a>
               </td>
             </tr>
             {% endfor %}
           </tbody>
         </table>
       </div>
+
     {% else %}
-      <article class="message is-info">
-        <div class="message-body">
-          هنوز سفارشی ثبت نکرده‌اید.
-          <a href="{% url 'catalog:product_list' %}" class="button is-small is-link ml-2">رفتن به فروشگاه</a>
-        </div>
-      </article>
+      <div class="notification is-light is-info has-text-centered py-6">
+        <p class="is-size-5 mb-3">هنوز سفارشی ثبت نکرده‌اید 📭</p>
+        <a href="{% url 'catalog:product_list' %}" class="button is-link is-light">
+          رفتن به فروشگاه
+        </a>
+      </div>
     {% endif %}
 
   </div>

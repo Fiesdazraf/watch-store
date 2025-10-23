@@ -1,1 +1,1 @@
-Your order {{ order.number }} has been received
+سفارش شما با شماره {{ order.number }} ثبت شد

@@ -1,0 +1,153 @@
+{% load humanize %}
+<!DOCTYPE html>
+<html lang="fa" dir="rtl">
+<head>
+  <meta charset="utf-8">
+  <title>فاکتور {{ invoice.number }}</title>
+  <style>
+    @page { size: A4; margin: 25mm 20mm; }
+    body {
+      font-family: "Vazirmatn", sans-serif;
+      direction: rtl;
+      font-size: 13px;
+      color: #222;
+    }
+    h1, h2, h3 { color: #c9a227; margin-bottom: 0; }
+    .header {
+      border-bottom: 2px solid #c9a227;
+      padding-bottom: 10px;
+      margin-bottom: 20px;
+    }
+    .header .logo {
+      font-size: 20px;
+      font-weight: bold;
+      color: #c9a227;
+    }
+    .meta { margin-bottom: 20px; }
+    .meta p { margin: 2px 0; }
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      margin-top: 10px;
+    }
+    th, td {
+      border: 1px solid #ddd;
+      padding: 6px 8px;
+      text-align: center;
+    }
+    th {
+      background-color: #f7f7f7;
+      font-weight: bold;
+    }
+    .totals td {
+      font-weight: bold;
+    }
+    .footer {
+      border-top: 1px solid #c9a227;
+      font-size: 11px;
+      color: #777;
+      text-align: center;
+      padding-top: 10px;
+      margin-top: 25px;
+    }
+  </style>
+</head>
+<body>
+
+  <!-- Header -->
+  <div class="header">
+    <div class="logo">Watch-Store</div>
+    <h1>فاکتور فروش</h1>
+    <p>شماره فاکتور: <strong>{{ invoice.number }}</strong></p>
+  </div>
+
+  <!-- Invoice Meta -->
+  <div class="meta">
+    <h3>اطلاعات فاکتور</h3>
+    <table>
+      <tr>
+        <td><strong>تاریخ صدور:</strong> {{ invoice.issued_at|date:"Y-m-d H:i" }}</td>
+        <td><strong>وضعیت:</strong> {{ invoice.get_status_display }}</td>
+      </tr>
+      {% if invoice.paid_at %}
+      <tr>
+        <td><strong>تاریخ پرداخت:</strong> {{ invoice.paid_at|date:"Y-m-d H:i" }}</td>
+        <td><strong>روش پرداخت:</strong> {{ invoice.payment_method|default:"-" }}</td>
+      </tr>
+      {% endif %}
+      <tr>
+        <td><strong>مبلغ فاکتور:</strong> {{ invoice.amount|floatformat:0|intcomma }} تومان</td>
+        <td><strong>سفارش مربوطه:</strong> {{ invoice.order.number|default:"—" }}</td>
+      </tr>
+    </table>
+  </div>
+
+  <!-- Customer Info -->
+  {% if invoice.order %}
+  <div class="meta">
+    <h3>مشخصات خریدار</h3>
+    <table>
+      <tr>
+        <td><strong>نام مشتری:</strong> {{ invoice.order.customer.user.get_full_name|default:invoice.order.customer.user.email }}</td>
+        <td><strong>تلفن:</strong> {{ invoice.order.customer.phone|default:"—" }}</td>
+      </tr>
+      <tr>
+        <td colspan="2"><strong>آدرس ارسال:</strong> {{ invoice.order.shipping_address|default:"—" }}</td>
+      </tr>
+    </table>
+  </div>
+  {% endif %}
+
+  <!-- Order Items -->
+  {% if invoice.order and invoice.order.items.exists %}
+  <h3>جزئیات سفارش</h3>
+  <table>
+    <thead>
+      <tr>
+        <th>کالا</th>
+        <th>تعداد</th>
+        <th>قیمت واحد</th>
+        <th>جمع جزء</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for item in invoice.order.items.all %}
+      <tr>
+        <td>{{ item.product.name }}</td>
+        <td>{{ item.quantity }}</td>
+        <td>{{ item.unit_price|floatformat:0|intcomma }}</td>
+        <td>{{ item.line_total|floatformat:0|intcomma }}</td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+  {% endif %}
+
+  <!-- Totals -->
+  <table class="totals" style="margin-top:15px;">
+    <tr>
+      <td>جمع کل:</td>
+      <td>{{ invoice.amount|floatformat:0|intcomma }} تومان</td>
+    </tr>
+    {% if invoice.tax_total %}
+    <tr>
+      <td>مالیات:</td>
+      <td>{{ invoice.tax_total|floatformat:0|intcomma }} تومان</td>
+    </tr>
+    {% endif %}
+    {% if invoice.shipping_total %}
+    <tr>
+      <td>هزینه ارسال:</td>
+      <td>{{ invoice.shipping_total|floatformat:0|intcomma }} تومان</td>
+    </tr>
+    {% endif %}
+  </table>
+
+  <!-- Footer -->
+  <div class="footer">
+    <p>این فاکتور به صورت الکترونیکی صادر شده است و نیازی به مهر یا امضا ندارد.</p>
+    <p>Watch-Store © {{ now|date:"Y" }} | www.watchstore.com</p>
+  </div>
+
+</body>
+</html>

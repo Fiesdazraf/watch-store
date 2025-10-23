@@ -1,124 +1,164 @@
-{% extends 'shop/base.html' %}
-{% load static %}
-
-{% block title %}Checkout{% endblock %}
+{% extends "base.html" %}
+{% load static humanize %}
+{% block title %}تسویه‌حساب | فروشگاه ساعت{% endblock %}
 
 {% block content %}
-<section class="section">
+<section class="section pt-5">
   <div class="container">
-    <h1 class="title">Checkout</h1>
+    <h1 class="title is-4 mb-5 has-text-centered">💳 تسویه‌حساب</h1>
 
     {% if items %}
-      <div class="columns">
-        <!-- Cart summary -->
-        <div class="column is-two-thirds">
-          <h2 class="subtitle">Your cart</h2>
-          <table class="table is-fullwidth">
+    <div class="columns is-variable is-6">
+      
+      <!-- 🛍 خلاصه سبد خرید -->
+      <div class="column is-5">
+        <div class="box">
+          <h2 class="title is-5 mb-4 has-text-centered">خلاصه سفارش</h2>
+
+          <table class="table is-fullwidth is-striped is-narrow">
             <thead>
               <tr>
-                <th>Product</th>
-                <th class="has-text-centered">Qty</th>
-                <th class="has-text-right">Unit</th>
-                <th class="has-text-right">Total</th>
+                <th>محصول</th>
+                <th class="has-text-centered">تعداد</th>
+                <th class="has-text-right">قیمت</th>
               </tr>
             </thead>
             <tbody>
               {% for it in items %}
               <tr>
                 <td>
-                  {{ it.product.name }}
-                  {% if it.variant %} ({{ it.variant.sku }}){% endif %}
+                  <div class="is-flex is-align-items-center">
+                    {% if it.product.primary_image %}
+                      <figure class="image is-48x48 ml-3">
+                        <img src="{{ it.product.primary_image.url }}" alt="{{ it.product.title }}">
+                      </figure>
+                    {% endif %}
+                    <div>
+                      <strong>{{ it.product.title }}</strong>
+                      {% if it.variant_display %}
+                        <div class="is-size-7 has-text-grey">({{ it.variant_display }})</div>
+                      {% endif %}
+                    </div>
+                  </div>
                 </td>
                 <td class="has-text-centered">{{ it.quantity }}</td>
-                <td class="has-text-right">{{ it.unit_price }}</td>
-                <td class="has-text-right">{{ it.subtotal }}</td>
+                <td class="has-text-right">{{ it.subtotal|intcomma }} تومان</td>
               </tr>
               {% endfor %}
             </tbody>
-            <tfoot>
-              <tr>
-                <th colspan="3" class="has-text-right">Subtotal</th>
-                <th class="has-text-right">{{ subtotal }}</th>
-              </tr>
-            </tfoot>
           </table>
-        </div>
 
-        <!-- Checkout form -->
-        <div class="column">
-          <h2 class="subtitle">Shipping & Payment</h2>
+          <hr class="my-3">
+
+          <div class="is-flex is-justify-content-space-between mb-2">
+            <span>جمع جزء:</span>
+            <strong>{{ subtotal|intcomma }} تومان</strong>
+          </div>
+          {% if shipping_cost %}
+          <div class="is-flex is-justify-content-space-between mb-2">
+            <span>هزینه ارسال:</span>
+            <strong>{{ shipping_cost|intcomma }} تومان</strong>
+          </div>
+          {% endif %}
+          {% if discount_total %}
+          <div class="is-flex is-justify-content-space-between mb-2 has-text-danger">
+            <span>تخفیف:</span>
+            <strong>-{{ discount_total|intcomma }} تومان</strong>
+          </div>
+          {% endif %}
+          <hr class="my-2">
+          <div class="is-flex is-justify-content-space-between">
+            <span>مبلغ نهایی:</span>
+            <strong class="has-text-weight-bold has-text-primary">
+              {{ total|intcomma }} تومان
+            </strong>
+          </div>
+        </div>
+      </div>
+
+      <!-- 🚚 فرم تسویه حساب -->
+      <div class="column is-7">
+        <div class="box">
+          <h2 class="title is-5 mb-4 has-text-centered">اطلاعات ارسال و پرداخت</h2>
           <form method="post" novalidate>
             {% csrf_token %}
 
-            {# ----- Address selection ----- #}
-            <div class="field">
-              <label class="label">Address</label>
+            <!-- آدرس کاربر -->
+            <div class="field mb-5">
+              <label class="label">انتخاب آدرس</label>
               {% if addresses %}
-                <div class="box">
+                <div class="box p-4">
                   {% for addr in addresses %}
-                    <label class="radio block">
+                    <label class="radio block mb-2">
                       <input type="radio" name="address_id" value="{{ addr.id }}"
                         {% if addr.id == default_address_id %}checked{% endif %}>
-                      {{ addr.full_name }} – {{ addr.line1 }}, {{ addr.city }}
+                      <span class="has-text-weight-medium">{{ addr.full_name }}</span>
+                      — {{ addr.line1 }}, {{ addr.city }}
                       {% if addr.default_shipping %}
-                        <span class="tag is-info">Default</span>
+                        <span class="tag is-info is-light ml-2">پیش‌فرض</span>
                       {% endif %}
                     </label>
                   {% endfor %}
                 </div>
 
                 <div class="field mt-2">
-                  <a href="{% url 'customers:address_list' %}" class="button is-small is-link">
+                  <a href="{% url 'customers:address_list' %}" class="button is-small is-link is-light">
                     <span class="icon"><i class="fas fa-map-marker-alt"></i></span>
-                    <span>Manage addresses</span>
+                    <span>مدیریت آدرس‌ها</span>
                   </a>
                 </div>
               {% else %}
-                {# fallback for guests or no addresses #}
-                <div class="control">{{ form.address }}</div>
-                {% for e in form.address.errors %}
-                  <p class="help is-danger">{{ e }}</p>
-                {% endfor %}
+                <article class="message is-warning is-light">
+                  <div class="message-body">
+                    هنوز آدرسی ثبت نکرده‌اید.
+                    <a href="{% url 'customers:address_list' %}" class="button is-small is-link ml-2">افزودن آدرس</a>
+                  </div>
+                </article>
               {% endif %}
             </div>
 
-            {# ----- Shipping method ----- #}
-            <div class="field">
-              <label class="label">Shipping method</label>
+            <!-- روش ارسال -->
+            <div class="field mb-4">
+              <label class="label">روش ارسال</label>
               <div class="control">{{ form.shipping_method }}</div>
               {% for e in form.shipping_method.errors %}
                 <p class="help is-danger">{{ e }}</p>
               {% endfor %}
             </div>
 
-            {# ----- Payment method ----- #}
-            <div class="field">
-              <label class="label">Payment method</label>
+            <!-- روش پرداخت -->
+            <div class="field mb-4">
+              <label class="label">روش پرداخت</label>
               <div class="control">{{ form.payment_method }}</div>
               {% for e in form.payment_method.errors %}
                 <p class="help is-danger">{{ e }}</p>
               {% endfor %}
             </div>
 
-            {# ----- Notes ----- #}
-            <div class="field">
-              <label class="label">Notes (optional)</label>
+            <!-- یادداشت -->
+            <div class="field mb-5">
+              <label class="label">یادداشت (اختیاری)</label>
               <div class="control">{{ form.notes }}</div>
             </div>
 
-            <div class="field">
+            <!-- دکمه ثبت سفارش -->
+            <div class="field mt-5">
               <div class="control">
-                <button class="button is-primary is-fullwidth" type="submit">
-                  Place order
+                <button class="button is-primary is-fullwidth is-medium" type="submit">
+                  <span class="icon"><i class="fas fa-check-circle"></i></span>
+                  <span>ثبت سفارش و ادامه پرداخت</span>
                 </button>
               </div>
             </div>
           </form>
         </div>
       </div>
+
+    </div>
     {% else %}
-      <div class="notification is-warning">
-        Your cart is empty.
+      <div class="notification is-warning has-text-centered py-6">
+        <p class="is-size-5 mb-3">سبد خرید شما خالی است 😕</p>
+        <a href="{% url 'catalog:product_list' %}" class="button is-link is-light">بازگشت به فروشگاه</a>
       </div>
     {% endif %}
   </div>

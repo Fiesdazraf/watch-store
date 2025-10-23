@@ -1,40 +1,76 @@
-{# templates/payments/payment_failed.html #}
 {% extends "base.html" %}
 {% load humanize %}
-{% block title %}پرداخت ناموفق{% endblock %}
+{% block title %}پرداخت ناموفق | Watch-Store{% endblock %}
 
 {% block content %}
-<section class="section">
-  <div class="container">
-    <div class="box has-text-centered">
-      <h1 class="title is-4 has-text-danger mb-4">❌ پرداخت ناموفق بود</h1>
+<section class="section pt-6">
+  <div class="container has-text-centered" style="max-width: 540px;">
 
-      <p class="mb-2">شماره سفارش: <strong>{{ order.number }}</strong></p>
-      <p>
-        وضعیت پرداخت:
-        <span class="tag is-danger is-medium">
-          {{ payment.get_status_display|default:payment.status }}
-        </span>
+    <div class="box p-6">
+      <!-- ❌ آیکون -->
+      <span class="icon has-text-danger is-large mb-3" style="font-size: 4rem;">
+        <i class="fas fa-times-circle"></i>
+      </span>
+
+      <h1 class="title is-4 mb-3">پرداخت ناموفق بود</h1>
+      <p class="subtitle is-6 has-text-grey mb-5">
+        متأسفانه پرداخت سفارش
+        <strong class="has-text-dark">#{{ order.number }}</strong>
+        با خطا مواجه شد.
       </p>
 
-      {% if payment.last_error %}
-        <div class="notification is-danger is-light mt-4">
-          <strong>خطا:</strong> {{ payment.last_error }}
-        </div>
-      {% endif %}
+      <!-- جزئیات پرداخت -->
+      <div class="content has-text-left mb-5 is-size-6">
+        <p>
+          <strong>وضعیت پرداخت:</strong>
+          <span class="tag is-danger is-light is-medium ml-2">
+            {{ payment.get_status_display|default:payment.status }}
+          </span>
+        </p>
+        {% if payment.last_error %}
+          <article class="message is-danger is-light mt-4 mb-0">
+            <div class="message-body">
+              <strong>خطا:</strong> {{ payment.last_error }}
+            </div>
+          </article>
+        {% else %}
+          <article class="message is-warning is-light mt-4 mb-0">
+            <div class="message-body">
+              تراکنش توسط درگاه بانکی تأیید نشد یا کاربر آن را لغو کرد.
+            </div>
+          </article>
+        {% endif %}
+      </div>
 
+      <!-- دکمه‌ها -->
       <div class="buttons is-centered mt-5">
-        <a href="{% url 'payments:checkout' order_number=order.number %}" class="button is-warning">
-          🔄 تلاش مجدد پرداخت
+        <a href="{% url 'payments:checkout' order_number=order.number %}"
+           class="button is-warning is-medium">
+          <span class="icon"><i class="fas fa-redo-alt"></i></span>
+          <span>تلاش مجدد پرداخت</span>
         </a>
-        <a href="{{ order_detail_url }}" class="button is-link is-light">
-          مشاهده سفارش
+
+        <a href="{{ order_detail_url|default:'#' }}"
+           class="button is-link is-light is-medium">
+          <span class="icon"><i class="fas fa-receipt"></i></span>
+          <span>مشاهده سفارش</span>
         </a>
-        <a href="{{ orders_list_url }}" class="button is-light">
-          بازگشت به سفارش‌ها
+
+        <a href="{{ orders_list_url|default:'/' }}"
+           class="button is-light is-medium">
+          <span class="icon"><i class="fas fa-list-ul"></i></span>
+          <span>سفارش‌های من</span>
         </a>
       </div>
+
+      <hr class="my-5">
+
+      <p class="is-size-7 has-text-grey">
+        اگر مبلغ از حساب شما کسر شده باشد، معمولاً طی <strong>۲۴ ساعت کاری</strong> به‌صورت خودکار بازگردانده می‌شود.<br>
+        در غیر این صورت با پشتیبانی تماس بگیرید و شماره سفارش <strong>#{{ order.number }}</strong> را اعلام کنید.
+      </p>
     </div>
+
   </div>
 </section>
 {% endblock %}

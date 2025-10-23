@@ -4,38 +4,63 @@
 {% block title %}پرداخت موفق{% endblock %}
 
 {% block content %}
-<section class="section">
-  <div class="container">
-    <div class="box has-text-centered">
-      <h1 class="title is-4 has-text-success mb-4">🎉 پرداخت با موفقیت انجام شد</h1>
+<section class="section pt-6">
+  <div class="container" style="max-width: 700px;">
 
-      <p class="mb-2">شماره سفارش: <strong>{{ order.number }}</strong></p>
-      <p class="mb-2">
-        مبلغ پرداخت‌شده:
-        <strong class="has-text-success">
-          {{ payment.amount|intcomma }} {{ payment.currency }}
-        </strong>
-      </p>
-      {% if payment.external_id %}
-        <p class="mb-4">
-          کد تراکنش:
-          <code>{{ payment.external_id }}</code>
+    <div class="card has-text-centered">
+      <header class="card-header is-justify-content-center">
+        <p class="card-header-title is-size-5 has-text-success">
+          <span class="icon mr-2"><i class="fas fa-check-circle"></i></span>
+          پرداخت با موفقیت انجام شد
         </p>
-      {% endif %}
+      </header>
 
-      <div class="notification is-success is-light mt-5">
-        <p>سفارش شما با موفقیت ثبت و پرداخت شد.</p>
-      </div>
+      <div class="card-content">
+        <div class="content is-size-6">
+          <p class="mb-2">شماره سفارش:
+            <strong class="has-text-info">#{{ order.number }}</strong>
+          </p>
 
-      <div class="buttons is-centered mt-5">
-        <a href="{{ order_detail_url }}" class="button is-primary">
-          مشاهده سفارش
-        </a>
-        <a href="{{ orders_list_url }}" class="button is-light">
-          بازگشت به سفارش‌ها
-        </a>
+          <p class="mb-2">
+            مبلغ پرداخت‌شده:
+            <strong class="has-text-success">
+              {{ payment.amount|intcomma }} {{ payment.currency|default:"تومان" }}
+            </strong>
+          </p>
+
+          {% if payment.external_id %}
+            <p class="mb-3">
+              کد تراکنش:
+              <code dir="ltr">{{ payment.external_id }}</code>
+            </p>
+          {% endif %}
+        </div>
+
+        <article class="message is-success is-light mt-4">
+          <div class="message-body">
+            🎉 سفارش شما با موفقیت ثبت و پرداخت شد.
+            <br>
+            در صورت نیاز، جزئیات سفارش در حساب کاربری شما قابل مشاهده است.
+          </div>
+        </article>
+
+        <div class="buttons is-centered mt-5">
+          <a href="{{ order_detail_url|default:'#' }}" class="button is-primary is-medium">
+            <span class="icon"><i class="fas fa-receipt"></i></span>
+            <span>مشاهده جزئیات سفارش</span>
+          </a>
+          <a href="{{ orders_list_url|default:'/' }}" class="button is-light is-medium">
+            <span class="icon"><i class="fas fa-list"></i></span>
+            <span>بازگشت به سفارش‌ها</span>
+          </a>
+        </div>
+
+        <p class="has-text-grey mt-5 is-size-7">
+          رسید پرداخت نیز به ایمیل شما ارسال شده است.
+        </p>
       </div>
     </div>
+
   </div>
 </section>
 {% endblock %}

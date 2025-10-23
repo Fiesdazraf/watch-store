@@ -1,0 +1,46 @@
+{% extends "base.html" %}
+{% load static %}
+
+{% block title %}خانه | فروشگاه ساعت{% endblock %}
+{% block meta_description %}
+  فروشگاه ساعت؛ عرضه‌کننده‌ی انواع ساعت مچی لوکس، کلاسیک و اسپرت از بهترین برندهای جهان.
+{% endblock %}
+
+{% block content %}
+<!-- 🎯 Hero Section -->
+<section class="hero is-medium is-primary is-bold"
+         style="background: linear-gradient(135deg, #11172a 0%, #1b2238 60%, #2d3a5a 100%);">
+  <div class="hero-body has-text-centered">
+    <h1 class="title is-2 has-text-weight-bold">به فروشگاه ساعت خوش آمدید</h1>
+    <h2 class="subtitle is-4 has-text-light">
+      جدیدترین مدل‌های ساعت مچی مردانه، زنانه و اسپرت
+    </h2>
+    <a href="{% url 'catalog:product_list' %}" class="button is-light is-medium mt-4">
+      مشاهده محصولات
+    </a>
+  </div>
+</section>
+
+<!-- 🛍 Featured Products -->
+<section class="section mt-6">
+  <div class="container">
+    <h2 class="title is-4 has-text-centered mb-5">⭐ محصولات ویژه</h2>
+
+    <div class="columns is-multiline">
+      {% for product in featured_products %}
+        <div class="column is-6-tablet is-3-desktop">
+          {% include "catalog/_products_card.html" with product=product %}
+        </div>
+      {% empty %}
+        <div class="column is-12 has-text-centered">
+          <article class="message is-info is-light">
+            <div class="message-body">
+              هیچ محصولی برای نمایش وجود ندارد.
+            </div>
+          </article>
+        </div>
+      {% endfor %}
+    </div>
+  </div>
+</section>
+{% endblock %}

@@ -1,0 +1,62 @@
+{% load static humanize %}
+<article class="card product-card" role="group" aria-labelledby="prod-{{ product.id }}">
+  <div class="card-image has-text-centered">
+    <a href="{% url 'catalog:product_detail' pk=product.id slug=product.slug %}" aria-label="{{ product.title }}">
+      <figure class="image is-4by3">
+        {% if product.primary_image %}
+          <img src="{{ product.primary_image.url }}" alt="{{ product.title }}" loading="lazy">
+        {% else %}
+          <img src="{% static 'shop/placeholder-600x450.png' %}" alt="{{ product.title }}" loading="lazy">
+        {% endif %}
+      </figure>
+    </a>
+  </div>
+
+  <div class="card-content">
+    <div class="content has-text-centered">
+      <p id="prod-{{ product.id }}" class="is-size-6 has-text-weight-semibold mb-1">
+        <a href="{% url 'catalog:product_detail' pk=product.id slug=product.slug %}">
+          {{ product.title }}
+        </a>
+      </p>
+
+      {% if product.brand %}
+        <p class="is-size-7 has-text-grey mb-2">{{ product.brand.name }}</p>
+      {% endif %}
+
+      <p class="mb-3">
+        {% if product.discounted_price %}
+          <span class="has-text-danger has-text-weight-bold">{{ product.discounted_price|intcomma }} تومان</span>
+          <span class="ml-2 has-text-grey-light" style="text-decoration: line-through;">
+            {{ product.price|intcomma }} تومان
+          </span>
+        {% else %}
+          <span class="has-text-weight-bold">{{ product.price|intcomma }} تومان</span>
+        {% endif %}
+      </p>
+
+      {% if product.is_active %}
+        <span class="tag is-success is-light mb-3">موجود</span>
+      {% else %}
+        <span class="tag is-danger is-light mb-3">ناموجود</span>
+      {% endif %}
+
+      <div class="buttons is-centered mt-3">
+        {% if product.variants.all|length %}
+          <a href="{% url 'catalog:product_detail' pk=product.id slug=product.slug %}"
+             class="button is-link is-light is-small">مشاهده</a>
+        {% else %}
+          <form action="{% url 'orders:add_to_cart' product.id %}" method="post" class="is-inline-block">
+            {% csrf_token %}
+            <input type="hidden" name="qty" value="1">
+            <button type="submit"
+                    class="button is-primary is-small"
+                    {% if not product.is_active %}disabled{% endif %}>
+              افزودن به سبد
+            </button>
+          </form>
+        {% endif %}
+      </div>
+    </div>
+  </div>
+</article>

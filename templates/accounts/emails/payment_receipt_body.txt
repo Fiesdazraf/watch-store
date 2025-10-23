@@ -1,15 +1,13 @@
-Hello {{ order.customer.user.first_name|default:"Customer" }},
+{{ order.customer.user.first_name|default:"کاربر گرامی" }} عزیز،
 
-We have received your payment for order {{ order.number }}.
+پرداخت شما برای سفارش شماره {{ order.number }} با موفقیت دریافت شد ✅
 
-Payment details:
-- Amount: {{ payment.amount }}
-- Status: {{ payment.status|title }}
+جزئیات پرداخت:
+- مبلغ: {{ payment.amount }} تومان
+- وضعیت: {{ payment.status|title }}
 {% if payment.transaction_id %}
-- Transaction ID: {{ payment.transaction_id }}
+- شناسه تراکنش: {{ payment.transaction_id }}
 {% endif %}
 
-Thank you for shopping with us.
-
-Best regards,
-The Store Team
+از خرید شما سپاسگزاریم 💛  
+تیم فروشگاه {{ site_name }}

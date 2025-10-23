@@ -1,14 +1,15 @@
 {% extends "base.html" %}
-{% block title %}آدرس‌ها{% endblock %}
+{% block title %}آدرس‌های من | Watch-Store{% endblock %}
 
 {% block content %}
 <section class="section pt-5">
   <div class="container">
 
-    <div class="is-flex is-justify-content-space-between is-align-items-center mb-4">
-      <h1 class="title is-4">آدرس‌های من</h1>
-      <a href="{% url 'accounts:address_create' %}" class="button is-primary">
-        افزودن آدرس جدید
+    <div class="is-flex is-justify-content-space-between is-align-items-center mb-5">
+      <h1 class="title is-4 mb-0">آدرس‌های من</h1>
+      <a href="{% url 'accounts:address_create' %}" class="button is-primary is-medium" style="background-color:#c9a227;">
+        <span class="icon"><i class="fas fa-plus"></i></span>
+        <span>افزودن آدرس جدید</span>
       </a>
     </div>
 
@@ -16,63 +17,66 @@
       <div class="columns is-multiline">
         {% for addr in addresses %}
           <div class="column is-12-tablet is-6-desktop">
-            <div class="card">
-              <div class="card-content">
+            <div class="box"
+                 style="{% if addr.is_default %}border:2px solid #c9a227;{% endif %} box-shadow:0 0 15px rgba(0,0,0,0.05); border-radius:10px;">
 
-                <div class="is-flex is-justify-content-space-between is-align-items-center mb-2">
-                  <p class="is-size-6 has-text-weight-semibold">
-                    {{ addr.full_name|default:"آدرس" }}
-                  </p>
-                  {% if addr.is_default %}
-                    <span class="tag is-success is-light">پیش‌فرض</span>
-                  {% endif %}
-                </div>
-
-                <div class="content is-size-6">
-                  {% if addr.line1 %}<div dir="ltr">{{ addr.line1 }}</div>{% endif %}
-                  {% if addr.line2 %}<div dir="ltr">{{ addr.line2 }}</div>{% endif %}
-
-                  {% if addr.city or addr.province %}
-                    <div>
-                      {{ addr.city }}{% if addr.city and addr.province %}, {% endif %}{{ addr.province }}
-                    </div>
-                  {% endif %}
-
-                  {% if addr.postal_code or addr.country %}
-                    <div>
-                      {% if addr.postal_code %}<span dir="ltr">کدپستی: {{ addr.postal_code }}</span>{% endif %}
-                      {% if addr.country %}
-                        {% if addr.postal_code %}<span> — </span>{% endif %}
-                        <span>{{ addr.country }}</span>
-                      {% endif %}
-                    </div>
-                  {% endif %}
-
-                  {% if addr.phone_number %}
-                    <div>تلفن: <span dir="ltr">{{ addr.phone_number }}</span></div>
-                  {% endif %}
-                </div>
-
-                <div class="buttons mt-3">
-                  <a href="{% url 'accounts:address_update' addr.id %}" class="button is-link is-light">
-                    ویرایش
-                  </a>
-                  <a href="{% url 'accounts:address_delete' addr.id %}" class="button is-danger is-light">
-                    حذف
-                  </a>
-                </div>
-
+              <div class="is-flex is-justify-content-space-between is-align-items-center mb-3">
+                <p class="is-size-6 has-text-weight-semibold">
+                  <span class="icon mr-1"><i class="fas fa-map-marker-alt"></i></span>
+                  {{ addr.full_name|default:"آدرس" }}
+                </p>
+                {% if addr.is_default %}
+                  <span class="tag is-success is-light">پیش‌فرض</span>
+                {% endif %}
               </div>
+
+              <div class="content is-size-6 has-text-grey-dark">
+                {% if addr.line1 %}<p dir="ltr">{{ addr.line1 }}</p>{% endif %}
+                {% if addr.line2 %}<p dir="ltr">{{ addr.line2 }}</p>{% endif %}
+
+                {% if addr.city or addr.province %}
+                  <p>{{ addr.city }}{% if addr.city and addr.province %}، {% endif %}{{ addr.province }}</p>
+                {% endif %}
+
+                {% if addr.postal_code or addr.country %}
+                  <p>
+                    {% if addr.postal_code %}
+                      <span dir="ltr">کدپستی: {{ addr.postal_code }}</span>
+                    {% endif %}
+                    {% if addr.country %}
+                      {% if addr.postal_code %} — {% endif %}
+                      <span>{{ addr.country }}</span>
+                    {% endif %}
+                  </p>
+                {% endif %}
+
+                {% if addr.phone_number %}
+                  <p>تلفن: <span dir="ltr">{{ addr.phone_number }}</span></p>
+                {% endif %}
+              </div>
+
+              <div class="buttons mt-4">
+                <a href="{% url 'accounts:address_update' addr.id %}" class="button is-link is-light">
+                  <span class="icon"><i class="fas fa-edit"></i></span>
+                  <span>ویرایش</span>
+                </a>
+                <a href="{% url 'accounts:address_delete' addr.id %}" class="button is-danger is-light">
+                  <span class="icon"><i class="fas fa-trash-alt"></i></span>
+                  <span>حذف</span>
+                </a>
+              </div>
+
             </div>
           </div>
         {% endfor %}
       </div>
     {% else %}
-      <article class="message is-info">
-        <div class="message-body">
-          هنوز آدرسی ثبت نکرده‌اید.
-          <a href="{% url 'accounts:address_create' %}" class="button is-small is-link ml-2">
-            افزودن آدرس
+      <article class="message is-info is-light">
+        <div class="message-body has-text-centered">
+          <p>هنوز آدرسی ثبت نکرده‌اید.</p>
+          <a href="{% url 'accounts:address_create' %}" class="button is-small is-link mt-3">
+            <span class="icon"><i class="fas fa-plus"></i></span>
+            <span>افزودن آدرس</span>
           </a>
         </div>
       </article>

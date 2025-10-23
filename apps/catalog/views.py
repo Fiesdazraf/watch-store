@@ -155,3 +155,8 @@ class ProductDetailView(DetailView):
         ctx["total_stock"] = total_stock
         ctx["has_variants"] = product.variants.exists() if hasattr(product, "variants") else False
         return ctx
+
+
+def home_view(request):
+    featured_products = Product.objects.filter(is_active=True, is_featured=True)[:8]
+    return render(request, "home.html", {"featured_products": featured_products})

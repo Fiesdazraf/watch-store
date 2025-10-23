@@ -242,6 +242,16 @@ class Product(models.Model):
     sku = models.CharField(max_length=64, unique=True)
     price = models.DecimalField(max_digits=12, decimal_places=0, default=0)
     is_active = models.BooleanField(default=True)
+
+    # ✅ فیلد جدید برای محصولات ویژه
+    is_featured = models.BooleanField(
+        default=False,
+        help_text=(
+            "Mark this product as featured "
+            "to display it on the homepage or highlighted sections."
+        ),
+    )
+
     created_at = models.DateTimeField(auto_now_add=True)
 
     class Meta:
@@ -254,6 +264,8 @@ class Product(models.Model):
             models.Index(fields=["sku"]),
             models.Index(fields=["is_active", "brand"]),
             models.Index(fields=["is_active", "category"]),
+            # ✅ ایندکس جدید برای نمایش سریع‌تر featured products
+            models.Index(fields=["is_active", "is_featured"]),
         ]
 
     def __str__(self) -> str:

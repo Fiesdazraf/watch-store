@@ -1,87 +1,120 @@
-{% extends 'shop/base.html' %}
-
-{% block title %}My Orders{% endblock %}
+{% extends "base.html" %}
+{% load humanize %}
+{% block title %}سفارش‌های من | فروشگاه ساعت{% endblock %}
 
 {% block content %}
-<section class="section">
+<section class="section pt-5">
   <div class="container">
-    <h1 class="title">My Orders</h1>
+
+    <h1 class="title is-4 mb-5">🧾 سفارش‌های من</h1>
 
     {% if orders and orders.object_list %}
-      <table class="table is-fullwidth is-striped is-hoverable">
-        <thead>
-          <tr>
-            <th>Number</th>
-            <th>Status</th>
-            <th>Total</th>
-            <th>Placed</th>
-            <th class="has-text-right">Actions</th>
-          </tr>
-        </thead>
-        <tbody>
-          {% for o in orders %}
-          {% with p=o.payment_obj %}
-          <tr>
-            <td>
-              <a href="{% url 'orders:detail' o.number %}">
-                <strong>{{ o.number }}</strong>
-              </a>
-              {% if p and p.method %}
-                <span class="tag is-light is-rounded is-size-7 ml-2">{{ p.method.name|default:"-" }}</span>
-              {% endif %}
-            </td>
+      <div class="table-container">
+        <table class="table is-fullwidth is-striped is-hoverable">
+          <thead class="has-background-light">
+            <tr>
+              <th>شماره سفارش</th>
+              <th class="has-text-centered">وضعیت</th>
+              <th class="has-text-centered">مبلغ نهایی</th>
+              <th class="has-text-centered">تاریخ ثبت</th>
+              <th class="has-text-centered">عملیات</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for o in orders %}
+              {% with p=o.payment_obj %}
+              <tr>
+                <!-- شماره سفارش -->
+                <td>
+                  <a href="{% url 'orders:order_detail' o.number %}" class="has-text-weight-semibold">
+                    #{{ o.number }}
+                  </a>
+                  {% if p and p.method %}
+                    <span class="tag is-light is-rounded is-size-7 ml-2">
+                      {{ p.method.name|default:"-" }}
+                    </span>
+                  {% endif %}
+                </td>
 
-            <td>
-              {% if o.is_paid %}
-                <span class="tag is-success">Paid</span>
-              {% elif p and p.status == "failed" %}
-                <span class="tag is-danger">Payment Failed</span>
-              {% else %}
-                <span class="tag is-warning">Awaiting Payment</span>
-              {% endif %}
-            </td>
+                <!-- وضعیت پرداخت -->
+                <td class="has-text-centered">
+                  {% if o.is_paid %}
+                    <span class="tag is-success is-light">پرداخت‌شده</span>
+                  {% elif p and p.status == "failed" %}
+                    <span class="tag is-danger is-light">پرداخت ناموفق</span>
+                  {% else %}
+                    <span class="tag is-warning is-light">در انتظار پرداخت</span>
+                  {% endif %}
+                </td>
 
-            <td>{{ o.grand_total }}</td>
-            <td>{{ o.placed_at|date:"Y-m-d H:i" }}</td>
+                <!-- مبلغ -->
+                <td class="has-text-centered has-text-weight-semibold">
+                  {{ o.grand_total|intcomma }} تومان
+                </td>
 
-            <td class="has-text-right">
-              <a class="button is-small is-link" href="{% url 'orders:detail' o.number %}">
-                View
-              </a>
-              {% if not o.is_paid %}
-              <a class="button is-small is-primary ml-1" href="{{ o.get_checkout_payment_url }}">
-                Pay / Retry
-              </a>
-              {% endif %}
-            </td>
-          </tr>
-          {% endwith %}
-          {% endfor %}
-        </tbody>
-      </table>
+                <!-- تاریخ -->
+                <td class="has-text-centered">
+                  {{ o.placed_at|date:"Y-m-d H:i" }}
+                </td>
 
+                <!-- دکمه‌ها -->
+                <td class="has-text-centered">
+                  <a href="{% url 'orders:order_detail' o.number %}"
+                     class="button is-small is-link is-light">
+                    <span class="icon"><i class="fas fa-eye"></i></span>
+                    <span>مشاهده</span>
+                  </a>
+                  {% if not o.is_paid %}
+                    <a href="{{ o.get_checkout_payment_url }}"
+                       class="button is-small is-primary ml-1">
+                      <span class="icon"><i class="fas fa-credit-card"></i></span>
+                      <span>پرداخت</span>
+                    </a>
+                  {% endif %}
+                </td>
+              </tr>
+              {% endwith %}
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+
+      <!-- Pagination -->
       {% if orders.has_other_pages %}
-      <nav class="pagination is-centered" role="navigation" aria-label="pagination">
-        {% if orders.has_previous %}
-          <a class="pagination-previous" href="?page={{ orders.previous_page_number }}">Previous</a>
-        {% endif %}
-        {% if orders.has_next %}
-          <a class="pagination-next" href="?page={{ orders.next_page_number }}">Next page</a>
-        {% endif %}
-        <ul class="pagination-list">
-          {% for i in orders.paginator.page_range %}
-            {% if i == orders.number %}
-              <li><a class="pagination-link is-current">{{ i }}</a></li>
-            {% else %}
-              <li><a class="pagination-link" href="?page={{ i }}">{{ i }}</a></li>
-            {% endif %}
-          {% endfor %}
-        </ul>
-      </nav>
+        <nav class="pagination is-centered mt-5" role="navigation" aria-label="pagination">
+          {% if orders.has_previous %}
+            <a class="pagination-previous" href="?page={{ orders.previous_page_number }}">قبلی</a>
+          {% else %}
+            <span class="pagination-previous is-disabled">قبلی</span>
+          {% endif %}
+
+          {% if orders.has_next %}
+            <a class="pagination-next" href="?page={{ orders.next_page_number }}">بعدی</a>
+          {% else %}
+            <span class="pagination-next is-disabled">بعدی</span>
+          {% endif %}
+
+          <ul class="pagination-list">
+            {% for i in orders.paginator.page_range %}
+              {% if i == orders.number %}
+                <li><a class="pagination-link is-current">{{ i }}</a></li>
+              {% else %}
+                <li><a class="pagination-link" href="?page={{ i }}">{{ i }}</a></li>
+              {% endif %}
+            {% endfor %}
+          </ul>
+        </nav>
       {% endif %}
+
     {% else %}
-      <div class="notification is-info">No orders yet.</div>
+      <div class="notification is-light is-info has-text-centered py-6">
+        <p class="is-size-5 mb-3">هیچ سفارشی ثبت نکرده‌اید 📭</p>
+        <a href="{% url 'catalog:product_list' %}" class="button is-link is-light">
+          رفتن به فروشگاه
+        </a>
+      </div>
     {% endif %}
+
   </div>
 </section>
 {% endblock %}

@@ -1,17 +1,23 @@
 {% extends "backoffice/base.html" %}
 {% load humanize %}
-{% block title %}فاکتورها{% endblock %}
+{% block title %}فاکتورها | Watch-Store Backoffice{% endblock %}
+
 {% block content %}
 <section class="section pt-5">
   <div class="container">
-    <h1 class="title is-4 mb-5">فاکتورها</h1>
+    <h1 class="title is-4 mb-5">
+      <span class="icon mr-1"><i class="fas fa-file-invoice"></i></span>
+      فاکتورها
+    </h1>
 
-    <form method="get" class="box mb-4">
+    <!-- Filters -->
+    <form method="get" class="box mb-5">
       <div class="columns is-multiline">
         <div class="column is-3">
           <label class="label">جستجو</label>
-          <input class="input" type="text" name="q" value="{{ query }}" placeholder="شماره فاکتور / شماره سفارش">
+          <input class="input" type="text" name="q" value="{{ query }}" placeholder="شماره فاکتور / سفارش">
         </div>
+
         <div class="column is-2">
           <label class="label">وضعیت</label>
           <div class="select is-fullwidth">
@@ -23,22 +29,26 @@
             </select>
           </div>
         </div>
+
         <div class="column is-2">
           <label class="label">از تاریخ</label>
           <input class="input" type="date" name="start" value="{{ start }}">
         </div>
+
         <div class="column is-2">
           <label class="label">تا تاریخ</label>
           <input class="input" type="date" name="end" value="{{ end }}">
         </div>
-        <div class="column is-3 is-flex is-align-items-flex-end" style="gap:.5rem">
-          <button class="button is-primary">اعمال فیلتر</button>
+
+        <div class="column is-3 is-flex is-align-items-flex-end" style="gap:.5rem;">
+          <button class="button is-primary" style="background-color:#c9a227;">اعمال فیلتر</button>
           <a class="button" href="{% url 'backoffice:invoices_list' %}">ریست</a>
         </div>
       </div>
     </form>
 
-    <div class="box">
+    <!-- Table -->
+    <div class="box" style="box-shadow:0 0 20px rgba(0,0,0,0.05); border-radius:8px;">
       <div class="table-container">
         <table class="table is-fullwidth is-striped is-hoverable">
           <thead>
@@ -49,25 +59,43 @@
               <th>وضعیت</th>
               <th>صدور</th>
               <th>پرداخت</th>
-              <th></th>
+              <th class="has-text-right">عملیات</th>
             </tr>
           </thead>
           <tbody>
             {% for inv in invoices %}
               <tr>
                 <td>{{ inv.number }}</td>
-                <td>{% if inv.order %}{{ inv.order.number }}{% else %}—{% endif %}</td>
+                <td>{{ inv.order.number|default:"—" }}</td>
                 <td>{{ inv.amount|floatformat:0|intcomma }} تومان</td>
-                <td><span class="tag">{{ inv.get_status_display }}</span></td>
+                <td>
+                  <span class="tag
+                    {% if inv.status == 'paid' %}is-success
+                    {% elif inv.status == 'unpaid' %}is-warning
+                    {% elif inv.status == 'void' %}is-danger
+                    {% else %}is-light{% endif %}">
+                    {{ inv.get_status_display }}
+                  </span>
+                </td>
                 <td>{{ inv.issued_at|date:"Y-m-d H:i" }}</td>
-                <td>{{ inv.paid_at|date:"Y-m-d H:i" }}</td>
+                <td>{{ inv.paid_at|date:"Y-m-d H:i"|default:"—" }}</td>
                 <td class="has-text-right">
-                  <a class="button is-small" href="{% url 'invoices:invoice_detail' inv.number %}">جزئیات</a>
-                  <a class="button is-small is-light" href="{% url 'invoices:invoice_pdf' inv.number %}">PDF</a>
+                  <a class="button is-small is-link is-light"
+                     href="{% url 'invoices:invoice_detail' inv.number %}">
+                    <span class="icon"><i class="fas fa-eye"></i></span>
+                    <span>جزئیات</span>
+                  </a>
+                  <a class="button is-small is-light"
+                     href="{% url 'invoices:invoice_pdf' inv.number %}">
+                    <span class="icon"><i class="fas fa-file-pdf"></i></span>
+                    <span>PDF</span>
+                  </a>
                 </td>
               </tr>
             {% empty %}
-              <tr><td colspan="7" class="has-text-centered">موردی یافت نشد.</td></tr>
+              <tr>
+                <td colspan="7" class="has-text-centered has-text-grey">موردی یافت نشد.</td>
+              </tr>
             {% endfor %}
           </tbody>
         </table>

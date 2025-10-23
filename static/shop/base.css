@@ -1,4 +1,77 @@
-/* Minimal RTL-friendly base; will be replaced by Tailwind in later phases */
-html, body { margin:0; padding:0; font-family: sans-serif; }
-main { padding: 1rem; }
-nav a { margin: 0 0.25rem; text-decoration: none; }
+/* ======================================
+   Watch-Store Frontend Styles
+   Author: SafeCode (Farzad Seif)
+   ====================================== */
+
+/* ----------- Font Setup ----------- */
+@font-face {
+  font-family: 'Vazirmatn';
+  src: url('./fonts/vazirmatn/Vazirmatn-Regular.woff2') format('woff2');
+  font-weight: 400;
+}
+
+@font-face {
+  font-family: 'Vazirmatn';
+  src: url('./fonts/vazirmatn/Vazirmatn-Bold.woff2') format('woff2');
+  font-weight: 700;
+}
+
+/* ----------- Base ----------- */
+html, body {
+  margin: 0;
+  padding: 0;
+  font-family: 'Vazirmatn', sans-serif;
+  background-color: #fafafa;
+  color: #222;
+  direction: rtl;
+  text-align: right;
+}
+
+/* ----------- Navbar ----------- */
+.navbar {
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.06);
+}
+.navbar-item {
+  font-weight: 500;
+}
+.navbar-item:hover {
+  color: #3273dc;
+}
+
+/* ----------- Hero Section ----------- */
+.hero {
+  background: linear-gradient(120deg, #1e90ff, #4facfe);
+  color: white;
+}
+
+/* ----------- Buttons ----------- */
+.button.is-primary {
+  background-color: #3273dc;
+  border-color: transparent;
+  font-weight: 600;
+}
+.button.is-primary:hover {
+  background-color: #276cda;
+}
+
+/* ----------- Cards ----------- */
+.card {
+  border-radius: 16px;
+  transition: all 0.3s ease;
+}
+.card:hover {
+  transform: translateY(-4px);
+  box-shadow: 0 6px 14px rgba(0, 0, 0, 0.1);
+}
+
+/* ----------- Footer ----------- */
+.footer {
+  background-color: #f5f5f5;
+  color: #555;
+  font-size: 0.9rem;
+}
+
+/* ----------- Messages ----------- */
+.notification {
+  border-radius: 12px;
+}

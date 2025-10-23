@@ -1,34 +1,62 @@
 {% extends "base.html" %}
-{% block title %}داشبورد{% endblock %}
+{% block title %}پنل کاربری | Watch-Store{% endblock %}
+
 {% block content %}
-<section class="section">
+<section class="section pt-5">
   <div class="container">
-    <h1 class="title">داشبورد</h1>
-    <div class="columns">
-      <div class="column is-half">
+
+    <h1 class="title is-4 mb-5">🎯 داشبورد کاربری</h1>
+
+    <div class="columns is-multiline">
+
+      <!-- Profile info -->
+      <div class="column is-6">
         <div class="box">
-          <h2 class="subtitle">پروفایل</h2>
-          <p>ایمیل: {{ request.user.email }}</p>
-          <p>موبایل: {{ customer.phone|default:"—" }}</p>
-          <a href="{% url 'accounts:profile' %}" class="button is-link is-light">ویرایش پروفایل</a>
+          <h2 class="subtitle is-5 mb-3">👤 اطلاعات حساب</h2>
+          <p><strong>ایمیل:</strong> {{ request.user.email }}</p>
+          <p><strong>شماره موبایل:</strong> {{ customer.phone|default:"—" }}</p>
+          <div class="buttons mt-4">
+            <a href="{% url 'accounts:profile' %}" class="button is-link is-light">
+              <span class="icon"><i class="fas fa-user-edit"></i></span>
+              <span>ویرایش پروفایل</span>
+            </a>
+          </div>
         </div>
       </div>
-      <div class="column is-half">
+
+      <!-- Addresses -->
+      <div class="column is-6">
         <div class="box">
-          <h2 class="subtitle">آدرس‌ها</h2>
+          <h2 class="subtitle is-5 mb-3">📍 آدرس‌ها</h2>
+
           {% if addresses %}
             <ul>
               {% for a in addresses %}
-                <li>{{ a.full_name }} — {{ a.city }} {% if a.is_default %}<span class="tag is-success">Default</span>{% endif %}</li>
+                <li class="mb-2">
+                  {{ a.full_name }} — {{ a.city }}
+                  {% if a.is_default %}
+                    <span class="tag is-success is-light">پیش‌فرض</span>
+                  {% endif %}
+                </li>
               {% endfor %}
             </ul>
           {% else %}
-            <p>آدرسی ثبت نشده.</p>
+            <p class="has-text-grey">هنوز آدرسی ثبت نکرده‌اید.</p>
           {% endif %}
-          <a class="button is-primary mt-3" href="{% url 'customers:address_list' %}">مدیریت آدرس‌ها</a>
-          <a class="button is-link is-light" href="{% url 'orders:history' %}">My Orders</a>
+
+          <div class="buttons mt-4">
+            <a class="button is-primary" href="{% url 'customers:address_list' %}">
+              <span class="icon"><i class="fas fa-map-marker-alt"></i></span>
+              <span>مدیریت آدرس‌ها</span>
+            </a>
+            <a class="button is-link is-light" href="{% url 'orders:history' %}">
+              <span class="icon"><i class="fas fa-shopping-bag"></i></span>
+              <span>سفارش‌های من</span>
+            </a>
+          </div>
         </div>
       </div>
+
     </div>
   </div>
 </section>

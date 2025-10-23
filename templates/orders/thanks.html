@@ -1,16 +1,60 @@
-{% extends 'shop/base.html' %}
-
-{% block title %}Thank you{% endblock %}
+{% extends "base.html" %}
+{% load humanize %}
+{% block title %}سفارش با موفقیت ثبت شد | Watch-Store{% endblock %}
 
 {% block content %}
-<section class="section">
-  <div class="container">
-    <h1 class="title">Thank you!</h1>
-    <p>Your order <strong>{{ order.number }}</strong> has been placed.</p>
-    <p>Status: <strong>{{ order.get_status_display }}</strong></p>
-    <p class="mt-4">
-      <a class="button is-link" href="/">Back to home</a>
-    </p>
+<section class="section pt-6">
+  <div class="container has-text-centered">
+
+    <div class="box p-6" style="max-width: 540px; margin: 0 auto;">
+      <!-- ✅ آیکون موفقیت -->
+      <span class="icon has-text-success is-large mb-3" style="font-size: 4rem;">
+        <i class="fas fa-check-circle"></i>
+      </span>
+
+      <h1 class="title is-4 mb-3">🎉 سفارش شما با موفقیت ثبت شد!</h1>
+      <p class="subtitle is-6 has-text-grey mb-5">
+        از خرید شما سپاسگزاریم 💙  
+        شماره سفارش شما:
+        <strong class="has-text-dark">#{{ order.number }}</strong>
+      </p>
+
+      <!-- جزئیات سفارش -->
+      <div class="content has-text-left mb-5 is-size-6">
+        <p><strong>وضعیت سفارش:</strong> {{ order.get_status_display }}</p>
+        <p><strong>مبلغ پرداختی:</strong> {{ order.grand_total|intcomma }} تومان</p>
+        <p><strong>تاریخ ثبت:</strong> {{ order.placed_at|date:"Y-m-d H:i" }}</p>
+      </div>
+
+      <!-- دکمه‌های اقدام -->
+      <div class="buttons is-centered mt-5">
+        <a href="{% url 'orders:order_detail' order.number %}"
+           class="button is-primary is-medium">
+          <span class="icon"><i class="fas fa-file-invoice"></i></span>
+          <span>مشاهده جزئیات سفارش</span>
+        </a>
+
+        <a href="{% url 'orders:history' %}"
+           class="button is-light is-medium">
+          <span class="icon"><i class="fas fa-list-ul"></i></span>
+          <span>سفارش‌های من</span>
+        </a>
+
+        <a href="{% url 'catalog:product_list' %}"
+           class="button is-link is-light is-medium">
+          <span class="icon"><i class="fas fa-shopping-bag"></i></span>
+          <span>بازگشت به فروشگاه</span>
+        </a>
+      </div>
+
+      <hr class="my-5">
+
+      <p class="is-size-7 has-text-grey">
+        سفارش شما در حال پردازش است و به‌زودی از طریق پیامک و ایمیل اطلاع‌رسانی خواهد شد.<br>
+        برای مشاهده وضعیت و پیگیری، از بخش <strong>سفارش‌های من</strong> در داشبورد کاربری استفاده کنید.
+      </p>
+    </div>
+
   </div>
 </section>
 {% endblock %}

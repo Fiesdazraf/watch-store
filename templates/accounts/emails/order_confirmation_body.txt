@@ -1,12 +1,12 @@
-Hello {{ order.customer.user.first_name|default:"Customer" }},
+{{ order.customer.user.first_name|default:"کاربر گرامی" }} عزیز،
 
-Thank you for your order {{ order.number }}.
+سفارش شما با شماره {{ order.number }} با موفقیت ثبت شد ✅
 
-Order summary:
-- Total: {{ order.grand_total }}
-- Placed at: {{ order.placed_at|date:"Y-m-d H:i" }}
+جزئیات سفارش:
+- مبلغ کل: {{ order.grand_total }} تومان
+- تاریخ ثبت: {{ order.placed_at|date:"Y-m-d H:i" }}
 
-We will notify you once it is shipped.
+به‌زودی وضعیت ارسال سفارش از طریق ایمیل و پنل کاربری به اطلاع شما خواهد رسید.
 
-Best regards,
-The Store Team
+با سپاس از خرید شما 💛  
+تیم فروشگاه {{ site_name }}

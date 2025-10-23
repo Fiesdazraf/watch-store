@@ -1,6 +1,6 @@
 {% extends "base.html" %}
 {% load static humanize %}
-{% block title %}{{ product.title }} | فروشگاه{% endblock %}
+{% block title %}{{ product.title }} | فروشگاه ساعت{% endblock %}
 
 {% block content %}
 <section class="section pt-5">
@@ -18,7 +18,7 @@
       </ul>
     </nav>
 
-    <div class="columns is-variable is-6">
+    <div class="columns is-variable is-6 mt-4">
       <!-- Gallery -->
       <div class="column is-5">
         <figure class="image is-3by2">
@@ -48,7 +48,7 @@
 
       <!-- Info + Buy box -->
       <div class="column is-7">
-        <h1 class="title is-3">{{ product.title }}</h1>
+        <h1 class="title is-3 mb-3">{{ product.title }}</h1>
 
         {% if product.brand %}
           <p class="mb-2"><strong>برند:</strong> {{ product.brand.name }}</p>
@@ -58,7 +58,7 @@
         <div class="mb-3">
           {% if product.discounted_price %}
             <p class="title is-4 has-text-danger">{{ product.discounted_price|intcomma }} تومان
-              <span class="is-size-6 has-text-grey-light" style="text-decoration:line-through">
+              <span class="is-size-6 has-text-grey-light" style="text-decoration:line-through;">
                 {{ product.price|intcomma }} تومان
               </span>
             </p>
@@ -92,10 +92,10 @@
           <div class="content mb-4">{{ product.short_description|linebreaks }}</div>
         {% endif %}
 
+        <!-- Add to Cart -->
         <div class="box">
           <form action="{% url 'orders:add_to_cart' product.id %}" method="post" id="add-to-cart-form">
             {% csrf_token %}
-
             {% if has_variants %}
               <div class="field">
                 <label class="label" for="variant_id">انتخاب تنوع</label>
@@ -104,7 +104,8 @@
                     <select id="variant_id" name="variant_id" required>
                       {% for v in product.variants.all %}
                         <option value="{{ v.id }}" data-stock="{{ v.stock|default:0 }}" {% if v.stock|default:0 == 0 %}disabled{% endif %}>
-                          {{ v.attribute }}: {{ v.value }} {% if v.extra_price %}(+{{ v.extra_price|intcomma }}){% endif %}
+                          {{ v.attribute }}: {{ v.value }}
+                          {% if v.extra_price %}(+{{ v.extra_price|intcomma }}){% endif %}
                           {% if v.stock|default:0 == 0 %} — ناموجود{% endif %}
                         </option>
                       {% endfor %}
@@ -117,10 +118,8 @@
 
             <div class="field is-grouped is-align-items-center">
               <div class="control">
-                <label class="label is-sr-only" for="qty">تعداد</label>
                 <input class="input" id="qty" name="qty" type="number" min="1" value="1" style="width:110px;">
               </div>
-
               <div class="control">
                 <button id="add-to-cart-btn" class="button is-primary" type="submit" {% if not product.is_active %}disabled{% endif %}>
                   {% if product.is_active %}افزودن به سبد{% else %}ناموجود{% endif %}
@@ -132,11 +131,11 @@
 
         <!-- Tabs -->
         <div class="box mt-6">
-          <div class="tabs is-toggle is-fullwidth" id="pdp-tabs" role="tablist">
+          <div class="tabs is-toggle is-fullwidth" id="pdp-tabs">
             <ul>
-              <li class="is-active" data-target="tab-desc" role="presentation"><a role="tab" aria-selected="true">توضیحات</a></li>
-              <li data-target="tab-specs" role="presentation"><a role="tab">مشخصات</a></li>
-              <li data-target="tab-reviews" role="presentation"><a role="tab">نظرات</a></li>
+              <li class="is-active" data-target="tab-desc"><a>توضیحات</a></li>
+              <li data-target="tab-specs"><a>مشخصات</a></li>
+              <li data-target="tab-reviews"><a>نظرات</a></li>
             </ul>
           </div>
 
@@ -146,7 +145,7 @@
           </div>
 
           <div id="tab-specs" class="pdp-tab-panel is-hidden" hidden>
-            {% include "catalog/_product_specs.html" %}
+            {% include "catalog/_products_specs.html" %}
           </div>
 
           <div id="tab-reviews" class="pdp-tab-panel is-hidden" hidden>
@@ -159,90 +158,7 @@
       </div>
     </div>
 
-    <!-- Related products -->
     {% include "catalog/_related_products.html" with related_products=related_products %}
-
   </div>
 </section>
-{% endblock %}
-
-{% block extra_js %}
-<script>
-  // Gallery thumbnails
-  (function () {
-    const main = document.getElementById('main-image');
-    const thumbs = document.querySelectorAll('.thumb-img');
-    thumbs.forEach(img => {
-      img.addEventListener('click', () => {
-        const url = img.dataset.full || img.src;
-        if (main && url) main.src = url;
-        // focus/outline
-        thumbs.forEach(t => t.style.outline = 'none');
-        img.style.outline = '2px solid var(--bulma-primary, #00d1b2)';
-      });
-    });
-  })();
-
-  // Tabs
-  (function () {
-    const tabs = document.querySelectorAll('#pdp-tabs ul li');
-    const panels = document.querySelectorAll('.pdp-tab-panel');
-    tabs.forEach(tab => {
-      tab.addEventListener('click', () => {
-        tabs.forEach(t => t.classList.remove('is-active'));
-        tab.classList.add('is-active');
-        const target = tab.getAttribute('data-target');
-        panels.forEach(p => {
-          if (p.id === target) {
-            p.classList.remove('is-hidden');
-            p.removeAttribute('hidden');
-          } else {
-            p.classList.add('is-hidden');
-            p.setAttribute('hidden', 'true');
-          }
-        });
-      });
-    });
-  })();
-
-  // Variant stock guard
-  (function () {
-    const select = document.getElementById('variant_id');
-    const btn = document.getElementById('add-to-cart-btn');
-    if (!select || !btn) return;
-    const update = () => {
-      const opt = select.options[select.selectedIndex];
-      const stock = parseInt(opt?.dataset?.stock || '0', 10);
-      if (Number.isFinite(stock) && stock <= 0) {
-        btn.disabled = true;
-        btn.textContent = 'ناموجود';
-      } else {
-        btn.disabled = false;
-        btn.textContent = 'افزودن به سبد';
-      }
-    };
-    select.addEventListener('change', update);
-    update();
-  })();
-</script>
-
-<script type="application/ld+json">
-{
-  "@context": "https://schema.org",
-  "@type": "Product",
-  "name": {{ product.title|escapejs|safe }},
-  "image": [
-    {% if product.primary_image %}"{{ product.primary_image.url }}"{% endif %}{% for img in product.images.all|slice:":6" %}{% if forloop.first and product.primary_image %}, {% endif %}"{{ img.image.url }}"{% if not forloop.last %}, {% endif %}{% endfor %}
-  ],
-  "description": {{ product.short_description|default:product.description|default_if_none:""|striptags|truncatechars:300|escapejs|safe }},
-  "sku": "{{ product.sku|default_if_none:'' }}",
-  "offers": {
-    "@type": "Offer",
-    "url": "{{ request.build_absolute_uri|default:'' }}",
-    "priceCurrency": "IRR",
-    "price": "{{ product.discounted_price|default:product.price }}",
-    "availability": "https://schema.org/{% if product.is_active %}InStock{% else %}OutOfStock{% endif %}"
-  }
-}
-</script>
 {% endblock %}

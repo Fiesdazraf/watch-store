@@ -1,119 +1,134 @@
 {% extends "base.html" %}
-{% block title %}سفارش {{ order.number }}{% endblock %}
+{% load humanize %}
+{% block title %}جزئیات سفارش {{ order.number }}{% endblock %}
 
 {% block content %}
 <section class="section pt-5">
   <div class="container">
 
-    <h1 class="title is-4">سفارش {{ order.number }}</h1>
+    <!-- Title -->
+    <h1 class="title is-4 mb-4">🧾 سفارش شماره {{ order.number }}</h1>
 
-    <!-- Meta -->
-    <div class="columns">
-      <div class="column">
-        <div class="box">
-          <div class="columns is-multiline is-variable is-2">
-            <div class="column is-half">
-              <p><strong>تاریخ:</strong> {{ order.placed_at|date:"Y-m-d H:i" }}</p>
-            </div>
-            <div class="column is-half">
-              <p>
-                <strong>وضعیت سفارش:</strong>
-                {% if order.is_paid %}
-                  <span class="tag is-success">پرداخت شد</span>
-                {% else %}
-                  <span class="tag is-warning">در انتظار پرداخت</span>
-                {% endif %}
-              </p>
-            </div>
-            <div class="column is-half">
-              <p><strong>مبلغ کل:</strong> {{ order.grand_total }} تومان</p>
-            </div>
-            <div class="column is-half">
-              <p><strong>روش ارسال:</strong> {{ order.shipping_method.name }}</p>
-            </div>
-          </div>
+    <!-- ✅ Order Meta -->
+    <div class="box mb-5">
+      <div class="columns is-multiline is-variable is-3">
+        <div class="column is-half">
+          <p><strong>تاریخ ثبت:</strong> {{ order.placed_at|date:"Y-m-d H:i" }}</p>
+        </div>
+        <div class="column is-half">
+          <p>
+            <strong>وضعیت سفارش:</strong>
+            {% if order.is_paid %}
+              <span class="tag is-success is-light">پرداخت‌شده</span>
+            {% else %}
+              <span class="tag is-warning is-light">در انتظار پرداخت</span>
+            {% endif %}
+          </p>
+        </div>
+        <div class="column is-half">
+          <p><strong>مبلغ کل:</strong> {{ order.grand_total|intcomma }} تومان</p>
+        </div>
+        <div class="column is-half">
+          <p><strong>روش ارسال:</strong> {{ order.shipping_method.name|default:"-" }}</p>
         </div>
       </div>
     </div>
 
-    <!-- Payment Summary -->
-    <div class="box">
-      <h2 class="title is-5 mb-3">وضعیت پرداخت</h2>
+    <!-- ✅ Payment Info -->
+    <div class="box mb-5">
+      <h2 class="title is-5 mb-4">وضعیت پرداخت</h2>
 
-      {# با توجه به Meta: ordering = ("-created_at",) در مدل Payment، اولین رکورد جدیدترین است #}
       {% with p=order.payments.first %}
         {% if p %}
-          <p><strong>درگاه/روش:</strong> {{ p.provider|default:"-" }}</p>
-          <p><strong>وضعیت پرداخت:</strong>
+          <p><strong>درگاه / روش:</strong> {{ p.provider|default:"-" }}</p>
+          <p>
+            <strong>وضعیت تراکنش:</strong>
             {% if p.status == "succeeded" %}
-              <span class="tag is-success">موفق</span>
+              <span class="tag is-success is-light">موفق</span>
             {% elif p.status == "failed" %}
-              <span class="tag is-danger">ناموفق</span>
+              <span class="tag is-danger is-light">ناموفق</span>
             {% elif p.status == "processing" %}
-              <span class="tag is-info">در حال پردازش</span>
+              <span class="tag is-info is-light">در حال پردازش</span>
             {% elif p.status == "canceled" %}
-              <span class="tag">لغو شده</span>
+              <span class="tag is-light">لغو شده</span>
             {% else %}
-              <span class="tag is-warning">در انتظار</span>
+              <span class="tag is-warning is-light">در انتظار</span>
             {% endif %}
           </p>
           {% if p.external_id %}
-            <p><strong>شناسه/کد تراکنش:</strong> <code>{{ p.external_id }}</code></p>
+            <p><strong>کد تراکنش:</strong> <code>{{ p.external_id }}</code></p>
           {% endif %}
           {% if p.paid_at %}
             <p><strong>تاریخ پرداخت:</strong> {{ p.paid_at|date:"Y-m-d H:i" }}</p>
           {% endif %}
         {% else %}
-          <p class="has-text-grey">برای این سفارش هنوز رکورد پرداخت ثبت نشده است.</p>
+          <p class="has-text-grey">برای این سفارش هنوز پرداختی ثبت نشده است.</p>
         {% endif %}
       {% endwith %}
 
       <div class="mt-4">
         {% if not order.is_paid %}
-          {# اگر متد کمکی URL داری، از همون استفاده کن؛ در غیر این صورت به payments:checkout لینک بده #}
           {% if order.get_checkout_payment_url %}
-            <a class="button is-primary" href="{{ order.get_checkout_payment_url }}">پرداخت / تلاش مجدد</a>
+            <a href="{{ order.get_checkout_payment_url }}" class="button is-primary is-medium">
+              <span class="icon"><i class="fas fa-credit-card"></i></span>
+              <span>پرداخت / تلاش مجدد</span>
+            </a>
           {% else %}
-            <a class="button is-primary" href="{% url 'payments:checkout' order_number=order.number %}">پرداخت / تلاش مجدد</a>
+            <a href="{% url 'payments:checkout' order_number=order.number %}" class="button is-primary is-medium">
+              <span class="icon"><i class="fas fa-credit-card"></i></span>
+              <span>پرداخت / تلاش مجدد</span>
+            </a>
           {% endif %}
         {% else %}
-          <a class="button is-light" href="{{orders_list_url}}">بازگشت به سفارش‌ها</a>
+          <a href="{% url 'orders:order_list' %}" class="button is-light">
+            <span class="icon"><i class="fas fa-arrow-right"></i></span>
+            <span>بازگشت به سفارش‌ها</span>
+          </a>
         {% endif %}
       </div>
     </div>
 
-    <!-- Items -->
-    <div class="box">
-      <h2 class="title is-5 mb-3">آیتم‌های سفارش</h2>
-      <table class="table is-fullwidth">
-        <thead>
-          <tr>
-            <th>محصول</th>
-            <th>تنوع</th>
-            <th>تعداد</th>
-            <th>قیمت واحد</th>
-            <th>مجموع</th>
-          </tr>
-        </thead>
-        <tbody>
-          {% for item in order.items.all %}
-            <tr>
-              <td>{{ item.product.name }}</td>
-              <td>{{ item.variant|default:"-" }}</td>
-              <td>{{ item.qty }}</td>
-              <td>{{ item.unit_price }}</td>
-              <td>{{ item.get_total }}</td>
-            </tr>
-          {% endfor %}
-        </tbody>
-      </table>
+    <!-- ✅ Order Items -->
+    <div class="box mb-6">
+      <h2 class="title is-5 mb-4">آیتم‌های سفارش</h2>
 
-      <div class="is-flex is-justify-content-flex-end">
-        <div class="content">
-          <p><strong>جمع جزء:</strong> {{ order.subtotal }}</p>
-          <p><strong>هزینه ارسال:</strong> {{ order.shipping_cost }}</p>
-          <p><strong>تخفیف:</strong> {{ order.discount_total }}</p>
-          <p class="is-size-5"><strong>قابل پرداخت:</strong> {{ order.total_payable }}</p>
+      <div class="table-container">
+        <table class="table is-fullwidth is-striped is-hoverable">
+          <thead>
+            <tr>
+              <th>محصول</th>
+              <th>تنوع</th>
+              <th class="has-text-centered">تعداد</th>
+              <th class="has-text-centered">قیمت واحد</th>
+              <th class="has-text-centered">جمع جزء</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for item in order.items.all %}
+            <tr>
+              <td>{{ item.product.title }}</td>
+              <td>{{ item.variant|default:"-" }}</td>
+              <td class="has-text-centered">{{ item.qty }}</td>
+              <td class="has-text-centered">{{ item.unit_price|intcomma }} تومان</td>
+              <td class="has-text-centered has-text-weight-semibold">{{ item.get_total|intcomma }} تومان</td>
+            </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+
+      <div class="is-flex is-justify-content-flex-end mt-4">
+        <div class="content has-text-right">
+          <p><strong>جمع جزء:</strong> {{ order.subtotal|intcomma }} تومان</p>
+          <p><strong>هزینه ارسال:</strong> {{ order.shipping_cost|intcomma }} تومان</p>
+          {% if order.discount_total %}
+            <p><strong>تخفیف:</strong> -{{ order.discount_total|intcomma }} تومان</p>
+          {% endif %}
+          <p class="is-size-5 mt-3"><strong>قابل پرداخت:</strong>
+            <span class="has-text-primary has-text-weight-bold">
+              {{ order.total_payable|intcomma }} تومان
+            </span>
+          </p>
         </div>
       </div>
     </div>

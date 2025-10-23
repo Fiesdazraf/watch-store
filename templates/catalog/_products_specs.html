@@ -1,0 +1,28 @@
+<div class="content mt-5">
+  <h4 class="is-size-6 has-text-weight-semibold mb-3">مشخصات فنی</h4>
+
+  <table class="table is-fullwidth is-striped is-hoverable">
+    <tbody>
+      <tr>
+        <th>کد کالا</th>
+        <td>{{ product.sku|default:"—" }}</td>
+      </tr>
+      <tr>
+        <th>برند</th>
+        <td>{{ product.brand.name|default:"—" }}</td>
+      </tr>
+      <tr>
+        <th>دسته</th>
+        <td>{{ product.category.name|default:"—" }}</td>
+      </tr>
+      <tr>
+        <th>وزن (نمونه)</th>
+        <td>—</td>
+      </tr>
+      <tr>
+        <th>جنس بدنه</th>
+        <td>—</td>
+      </tr>
+    </tbody>
+  </table>
+</div>

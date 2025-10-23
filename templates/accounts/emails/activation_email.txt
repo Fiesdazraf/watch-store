@@ -1,7 +1,11 @@
-Hi {{ user.full_name|default:user.email }},
-Please verify your email by clicking the link below:
+{{ user.full_name|default:user.email }} عزیز،
+
+به فروشگاه ساعت Watch-Store خوش آمدید 🌟
+
+برای فعال‌سازی حساب کاربری خود، لطفاً روی لینک زیر کلیک کنید:
 {{ activation_link }}
 
-If you didn’t create this account, you can ignore this email.
-Thanks,
-{{ site_name }} Team
+اگر شما برای ساخت این حساب اقدامی نکرده‌اید، می‌توانید این ایمیل را نادیده بگیرید.
+
+با احترام،  
+تیم پشتیبانی {{ site_name }}

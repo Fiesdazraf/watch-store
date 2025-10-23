@@ -1,49 +1,101 @@
 {% load static %}
-<!doctype html>
+<!DOCTYPE html>
 <html lang="fa" dir="rtl">
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width,initial-scale=1" />
-  <title>{% block title %}پنل مدیریت | Watch Store{% endblock %}</title>
+  <title>{% block title %}پنل مدیریت | Watch-Store{% endblock %}</title>
 
+  <!-- Bulma -->
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bulma@0.9.4/css/bulma.min.css">
+
+  <!-- Font Persian -->
+  <link href="https://cdn.jsdelivr.net/npm/vazirmatn@33.003/index.css" rel="stylesheet">
+
+  <!-- Custom CSS -->
   <link rel="stylesheet" href="{% static 'backoffice/custom.css' %}">
+
   <style>
     :root {
       --bo-bg: #0f1220;
       --bo-card: #171a2b;
       --bo-text: #e9edf5;
       --bo-muted: #9aa3b2;
-      --bo-primary: #c9a227; /* طلایی سبک */
+      --bo-primary: #c9a227; /* طلایی سبک برند */
     }
+
+    /* Base colors */
     body {
       background: var(--bo-bg);
       color: var(--bo-text);
+      font-family: "Vazirmatn", sans-serif;
+      letter-spacing: -0.2px;
       min-height: 100vh;
     }
+
+    /* Components */
     .navbar, .box, .card {
       background: var(--bo-card);
       color: var(--bo-text);
     }
-    .navbar .navbar-item, .navbar .navbar-link { color: var(--bo-text); }
+
     .navbar.is-dark { background: #12162a; }
+    .navbar .navbar-item, .navbar .navbar-link { color: var(--bo-text); }
+
     a, .has-text-link { color: var(--bo-primary) !important; }
-    .menu-label, .menu-list a { color: var(--bo-muted); }
-    .menu-list a.is-active { background: rgba(201,162,39,0.12); color: var(--bo-text); }
-    .tag.is-light { background: rgba(255,255,255,.08); color: var(--bo-text); border: 1px solid rgba(255,255,255,.06); }
-    .table tr:hover { background: rgba(255,255,255,.03); }
-    .toast { position: fixed; inset-inline-start: 1rem; inset-block-start: 1rem; z-index: 50; }
+
+    /* Sidebar */
+    .menu-label, .menu-list a {
+      color: var(--bo-muted);
+      transition: all 0.2s ease;
+    }
+
+    .menu-list a.is-active {
+      background: rgba(201,162,39,0.12);
+      color: var(--bo-text);
+    }
+
+    .menu-list a:hover {
+      background: rgba(201,162,39,0.1);
+      color: var(--bo-text);
+    }
+
+    /* Tables & Tags */
+    .tag.is-light {
+      background: rgba(255,255,255,.08);
+      color: var(--bo-text);
+      border: 1px solid rgba(255,255,255,.06);
+    }
+
+    .table tr:hover {
+      background: rgba(255,255,255,.03);
+    }
+
+    /* Toast notifications */
+    .toast {
+      position: fixed;
+      inset-inline-start: 1rem;
+      inset-block-start: 1rem;
+      z-index: 50;
+    }
+
+    /* Chart canvas container */
+    .chart-wrapper {
+      position: relative;
+      height: 300px;
+    }
   </style>
 
   {% block extra_css %}{% endblock %}
 </head>
 <body>
 
-  <!-- Top navbar -->
+  <!-- Navbar -->
   <nav class="navbar is-dark" role="navigation" aria-label="main navigation">
     <div class="navbar-brand">
       <a class="navbar-item" href="{% url 'backoffice:dashboard' %}">
-        <strong>Backoffice</strong>&nbsp;<span class="has-text-grey-light">/ Watch Store</span>
+        <strong>Backoffice</strong>&nbsp;
+        <span class="has-text-grey-light">/ Watch-Store</span>
       </a>
       <a role="button" class="navbar-burger" aria-label="menu" aria-expanded="false" data-target="boNav">
         <span aria-hidden="true"></span><span aria-hidden="true"></span><span aria-hidden="true"></span>
@@ -54,13 +106,15 @@
       <div class="navbar-start">
         <a class="navbar-item" href="{% url 'backoffice:dashboard' %}">داشبورد</a>
         <a class="navbar-item" href="{% url 'orders:list' %}">سفارش‌ها</a>
-        <a class="navbar-item" href="{% url 'backoffice:invoices_list' %}">فاکتورها</a>  <!-- 👈 جدید -->
+        <a class="navbar-item" href="{% url 'backoffice:invoices_list' %}">فاکتورها</a>
       </div>
       <div class="navbar-end">
         <div class="navbar-item">
           <div class="buttons">
             {% if request.user.is_authenticated %}
-              <span class="tag is-light is-medium">{{ request.user.get_full_name|default:request.user.get_username }}</span>
+              <span class="tag is-light is-medium">
+                {{ request.user.get_full_name|default:request.user.get_username }}
+              </span>
               <a class="button is-small is-light" href="{% url 'accounts:logout' %}">خروج</a>
             {% endif %}
           </div>
@@ -69,6 +123,7 @@
     </div>
   </nav>
 
+  <!-- Layout -->
   <section class="section">
     <div class="container is-fluid">
       <div class="columns">
@@ -78,29 +133,21 @@
           <ul class="menu-list">
             <li>
               <a class="{% if request.resolver_match.url_name == 'dashboard' %}is-active{% endif %}"
-                 href="{% url 'backoffice:dashboard' %}">
-                 داشبورد
-              </a>
+                 href="{% url 'backoffice:dashboard' %}">داشبورد</a>
             </li>
             <li>
               <a class="{% if 'orders' in request.resolver_match.namespace %}is-active{% endif %}"
-                 href="{% url 'orders:list' %}">
-                 سفارش‌ها
-              </a>
+                 href="{% url 'orders:list' %}">سفارش‌ها</a>
             </li>
             <li>
-              <!-- 👇 لینک جدید به فاکتورها -->
               <a class="{% if request.resolver_match.url_name == 'invoices_list' %}is-active{% endif %}"
-                 href="{% url 'backoffice:invoices_list' %}">
-                 فاکتورها
-              </a>
+                 href="{% url 'backoffice:invoices_list' %}">فاکتورها</a>
             </li>
-            {# <li><a href="{% url 'catalog:product_list' %}">محصولات</a></li> #}
-            {# <li><a href="{% url 'customers:list' %}">مشتریان</a></li> #}
+            {# در صورت نیاز: <li><a href="{% url 'backoffice:reports' %}">گزارش‌ها</a></li> #}
           </ul>
         </aside>
 
-        <!-- Main -->
+        <!-- Main content -->
         <main class="column is-10">
           {% if messages %}
           <div class="toast">
@@ -121,7 +168,7 @@
 
   <!-- Scripts -->
   <script>
-    // Navbar burger (mobile)
+    // Navbar burger toggle
     document.addEventListener('DOMContentLoaded', () => {
       const $burgers = Array.prototype.slice.call(document.querySelectorAll('.navbar-burger'), 0);
       $burgers.forEach(el => {
@@ -136,6 +183,7 @@
     });
   </script>
 
+  <!-- Chart.js -->
   <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.4/dist/chart.umd.min.js" defer></script>
 
   {% block extra_js %}{% endblock %}

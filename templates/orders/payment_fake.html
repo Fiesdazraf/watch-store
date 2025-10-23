@@ -1,22 +1,50 @@
-{% extends 'shop/base.html' %}
-
-{% block title %}Demo Payment{% endblock %}
+{% extends "base.html" %}
+{% load humanize %}
+{% block title %}درگاه پرداخت آزمایشی | Watch-Store{% endblock %}
 
 {% block content %}
-<section class="section">
-  <div class="container">
-    <h1 class="title">Demo Payment</h1>
-    <p class="subtitle">Order: <strong>{{ order_number }}</strong></p>
-    <p>Amount: <strong>{{ amount }}</strong></p>
-    <div class="buttons mt-5">
-      <a class="button is-success"
-         href="{{ return_url }}?order={{ order_number }}&status=ok">Pay Success</a>
-      <a class="button is-danger"
-         href="{{ return_url }}?order={{ order_number }}&status=fail">Pay Failed</a>
-      <a class="button"
-         href="{{ return_url }}?order={{ order_number }}&status=cancel">Cancel</a>
+<section class="section pt-6">
+  <div class="container has-text-centered">
+
+    <div class="box p-6" style="max-width: 540px; margin: 0 auto;">
+      <h1 class="title is-4 mb-3">💳 درگاه پرداخت آزمایشی</h1>
+      <p class="subtitle is-6 has-text-grey mb-5">
+        این صفحه صرفاً جهت تست فرآیند پرداخت در محیط توسعه طراحی شده است.
+      </p>
+
+      <div class="content has-text-left mb-5">
+        <p><strong>شماره سفارش:</strong> {{ order_number }}</p>
+        <p><strong>مبلغ پرداخت:</strong> {{ amount|intcomma }} تومان</p>
+      </div>
+
+      <div class="buttons is-centered mt-5">
+        <a href="{{ return_url }}?order={{ order_number }}&status=ok"
+           class="button is-success is-medium px-5">
+          <span class="icon"><i class="fas fa-check-circle"></i></span>
+          <span>پرداخت موفق</span>
+        </a>
+
+        <a href="{{ return_url }}?order={{ order_number }}&status=fail"
+           class="button is-danger is-medium px-5">
+          <span class="icon"><i class="fas fa-times-circle"></i></span>
+          <span>پرداخت ناموفق</span>
+        </a>
+
+        <a href="{{ return_url }}?order={{ order_number }}&status=cancel"
+           class="button is-light is-medium px-5">
+          <span class="icon"><i class="fas fa-ban"></i></span>
+          <span>انصراف</span>
+        </a>
+      </div>
+
+      <hr class="my-5">
+
+      <p class="is-size-7 has-text-grey">
+        💡 این درگاه برای مقاصد آموزشی و تست پروژهٔ <strong>Watch-Store</strong> ساخته شده است.<br>
+        هیچ تراکنش واقعی در این صفحه انجام نمی‌شود.
+      </p>
     </div>
-    <p class="mt-5">This is a local demo gateway for portfolio/testing purposes.</p>
+
   </div>
 </section>
 {% endblock %}

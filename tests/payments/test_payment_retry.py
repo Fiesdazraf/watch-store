@@ -4,6 +4,7 @@ pytestmark = pytest.mark.django_db
 
 
 def test_payment_retry_increments_attempts():
+
     from model_bakery import baker
 
     payment = baker.make("payments.Payment", status="failed")

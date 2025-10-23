@@ -1,24 +1,119 @@
 {% extends "backoffice/base.html" %}
-{% block title %}Invoices{% endblock %}
+{% load humanize %}
+{% block title %}لیست فاکتورها | Watch-Store{% endblock %}
+
 {% block content %}
-  <section class="section">
-    <h1 class="title">Invoices List</h1>
-    <table class="table is-fullwidth is-striped">
-      <thead>
-        <tr><th>ID</th><th>Number</th><th>Status</th><th>Issued At</th></tr>
-      </thead>
-      <tbody>
-        {% for invoice in invoices %}
-          <tr>
-            <td>{{ invoice.id }}</td>
-            <td>{{ invoice.number }}</td>
-            <td>{{ invoice.status }}</td>
-            <td>{{ invoice.issued_at|date:"Y-m-d H:i" }}</td>
-          </tr>
-        {% empty %}
-          <tr><td colspan="4">No invoices found.</td></tr>
-        {% endfor %}
-      </tbody>
-    </table>
-  </section>
+<section class="section pt-5">
+  <div class="container">
+
+    <h1 class="title is-4 mb-5">🧾 لیست فاکتورها</h1>
+
+    <!-- 🔹 فیلترها -->
+    <form method="get" class="box mb-5">
+      <div class="columns is-multiline">
+        <div class="column is-one-quarter">
+          <label class="label">از تاریخ</label>
+          <input class="input" type="date" name="start" value="{{ filters.start|default_if_none:'' }}">
+        </div>
+        <div class="column is-one-quarter">
+          <label class="label">تا تاریخ</label>
+          <input class="input" type="date" name="end" value="{{ filters.end|default_if_none:'' }}">
+        </div>
+        <div class="column is-one-quarter">
+          <label class="label">وضعیت</label>
+          <div class="select is-fullwidth">
+            <select name="status">
+              <option value="">همه</option>
+              <option value="pending" {% if filters.status == 'pending' %}selected{% endif %}>در انتظار</option>
+              <option value="paid" {% if filters.status == 'paid' %}selected{% endif %}>پرداخت‌شده</option>
+              <option value="canceled" {% if filters.status == 'canceled' %}selected{% endif %}>لغوشده</option>
+            </select>
+          </div>
+        </div>
+        <div class="column is-one-quarter is-flex is-align-items-flex-end" style="gap:.5rem">
+          <button class="button is-primary" type="submit">اعمال فیلتر</button>
+          <a href="{% url 'backoffice:invoices_list' %}" class="button">ریست</a>
+        </div>
+      </div>
+    </form>
+
+    <!-- 🔹 جدول فاکتورها -->
+    <div class="box">
+      <div class="table-container">
+        <table class="table is-fullwidth is-striped is-hoverable">
+          <thead>
+            <tr>
+              <th>شماره فاکتور</th>
+              <th class="has-text-centered">مبلغ</th>
+              <th class="has-text-centered">وضعیت</th>
+              <th class="has-text-centered">تاریخ صدور</th>
+              <th class="has-text-centered">تاریخ پرداخت</th>
+              <th class="has-text-centered">سفارش</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for inv in invoices %}
+              <tr>
+                <td>
+                  <a href="{% url 'invoices:invoice_detail' inv.number %}" class="has-text-link">
+                    #{{ inv.number }}
+                  </a>
+                </td>
+                <td class="has-text-centered has-text-weight-semibold">
+                  {{ inv.amount|floatformat:0|intcomma }} تومان
+                </td>
+                <td class="has-text-centered">
+                  {% include "backoffice/partials/_order_status_badge.html" with status=inv.status %}
+                </td>
+                <td class="has-text-centered">
+                  {{ inv.issued_at|date:"Y-m-d H:i" }}
+                </td>
+                <td class="has-text-centered">
+                  {{ inv.paid_at|default:"—"|date:"Y-m-d H:i" }}
+                </td>
+                <td class="has-text-centered">
+                  {% if inv.order %}
+                    <a href="{% url 'orders:detail' inv.order.number %}" class="button is-small is-link is-light">
+                      <span class="icon"><i class="fas fa-box"></i></span>
+                      <span>سفارش {{ inv.order.number }}</span>
+                    </a>
+                  {% else %}
+                    <span class="has-text-grey">—</span>
+                  {% endif %}
+                </td>
+              </tr>
+            {% empty %}
+              <tr><td colspan="6" class="has-text-centered">هیچ فاکتوری یافت نشد.</td></tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+
+      {% if invoices.has_other_pages %}
+      <nav class="pagination is-centered mt-5" role="navigation" aria-label="pagination">
+        {% if invoices.has_previous %}
+          <a class="pagination-previous" href="?page={{ invoices.previous_page_number }}">قبلی</a>
+        {% else %}
+          <span class="pagination-previous is-disabled">قبلی</span>
+        {% endif %}
+        {% if invoices.has_next %}
+          <a class="pagination-next" href="?page={{ invoices.next_page_number }}">بعدی</a>
+        {% else %}
+          <span class="pagination-next is-disabled">بعدی</span>
+        {% endif %}
+        <ul class="pagination-list">
+          {% for i in invoices.paginator.page_range %}
+            {% if i == invoices.number %}
+              <li><a class="pagination-link is-current">{{ i }}</a></li>
+            {% else %}
+              <li><a class="pagination-link" href="?page={{ i }}">{{ i }}</a></li>
+            {% endif %}
+          {% endfor %}
+        </ul>
+      </nav>
+      {% endif %}
+    </div>
+
+  </div>
+</section>
 {% endblock %}

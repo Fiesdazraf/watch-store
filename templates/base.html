@@ -5,48 +5,66 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
 
-  <title>{% block title %}فروشگاه ساعت{% endblock %}</title>
-  <meta name="description" content="{% block meta_description %}خرید آنلاین انواع ساعت مچی مردانه، زنانه و اسپرت{% endblock %}">
+  <title>{% block title %}فروشگاه ساعت | Watch Store{% endblock %}</title>
+  <meta name="description"
+        content="{% block meta_description %}خرید آنلاین انواع ساعت مچی مردانه، زنانه و اسپرت با بهترین قیمت{% endblock %}">
+  <meta name="theme-color" content="#ffffff">
 
-  <!-- Bulma CSS (compiled from assets/scss/bulma-custom.scss) -->
+  <!-- Favicon -->
+  <link rel="icon" type="image/png" href="{% static 'shop/favicon.png' %}">
+
+  <!-- Bulma CSS -->
   <link rel="stylesheet" href="{% static 'shop/bulma.css' %}">
+  <!-- Custom Base Styles -->
+  <link rel="stylesheet" href="{% static 'shop/base.css' %}">
+
+  <!-- Font Awesome -->
+  <script src="https://kit.fontawesome.com/1b5d5b61b1.js" crossorigin="anonymous"></script>
+
   <!-- HTMX -->
   <script src="https://unpkg.com/htmx.org@1.11.1"></script>
 
   {% block extra_css %}{% endblock %}
 </head>
+
 <body>
 
-  {# Header partial #}
+  <!-- 🧭 Header -->
   {% include "partials/_header.html" %}
 
-  {# Flash Messages #}
+  <!-- 🔔 Flash Messages -->
   {% if messages %}
-  <section class="section pt-4 pb-0">
-    <div class="container">
-      {% for message in messages %}
-        <article class="message
-          {% if message.tags == 'success' %} is-success
-          {% elif message.tags == 'error' %} is-danger
-          {% elif message.tags == 'warning' %} is-warning
-          {% else %} is-info{% endif %}">
-          <div class="message-body">{{ message }}</div>
-        </article>
-      {% endfor %}
-    </div>
-  </section>
+    <section class="section pt-4 pb-0">
+      <div class="container">
+        {% for message in messages %}
+          <article class="message
+            {% if message.tags == 'success' %} is-success
+            {% elif message.tags == 'error' %} is-danger
+            {% elif message.tags == 'warning' %} is-warning
+            {% else %} is-info{% endif %}">
+            <div class="message-body has-text-centered">{{ message }}</div>
+          </article>
+        {% endfor %}
+      </div>
+    </section>
   {% endif %}
 
-  {# Main content block #}
-  <section class="section">
-    <div class="container">
-      {% block content %}{% endblock %}
-    </div>
-  </section>
+  <!-- 📄 Main Content -->
+  <main>
+    {% block content %}{% endblock %}
+  </main>
 
-  {# Footer partial #}
+  <!-- 🦶 Footer -->
   {% include "partials/_footer.html" %}
 
+  <!-- Optional scripts -->
   {% block extra_js %}{% endblock %}
+
+  <script>
+    // Close flash messages
+    document.querySelectorAll('.message .delete')?.forEach(btn => {
+      btn.addEventListener('click', e => e.target.closest('.message').remove());
+    });
+  </script>
 </body>
 </html>

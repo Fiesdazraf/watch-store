@@ -12,9 +12,9 @@ from .views import (
 app_name = "payments"
 
 urlpatterns = [
-    path("checkout/<str:order_number>/", checkout_payment_view, name="checkout"),
-    path("mock-gateway/<str:order_number>/", mock_gateway_view, name="mock_gateway"),
     path("success/<str:order_number>/", payment_success_view, name="success"),
     path("failed/<str:order_number>/", payment_failed_view, name="failed"),
     path("canceled/<str:order_number>/", payment_canceled_view, name="canceled"),
+    path("mock-gateway/<str:order_number>/", mock_gateway_view, name="mock_gateway"),
+    path("checkout/<str:order_number>/", checkout_payment_view, name="checkout"),
 ]

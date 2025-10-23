@@ -1,65 +1,73 @@
 {% extends "backoffice/base.html" %}
 {% load humanize %}
 
-{% block title %}گزارش فروش{% endblock %}
+{% block title %}📈 گزارش فروش | Watch-Store{% endblock %}
 
 {% block content %}
 <section class="section pt-5">
   <div class="container">
-    <h1 class="title is-4">گزارش فروش</h1>
 
-    <!-- Filters -->
+    <h1 class="title is-4 mb-5">📊 گزارش فروش و عملکرد</h1>
+
+    <!-- 🔹 فیلترها -->
     <form method="get" class="box mb-5">
       <div class="columns is-multiline">
-        <div class="column is-3">
+        <div class="column is-one-quarter">
           <label class="label">از تاریخ</label>
           <input class="input" type="date" name="start" value="{{ start|date:'Y-m-d' }}">
         </div>
-        <div class="column is-3">
+        <div class="column is-one-quarter">
           <label class="label">تا تاریخ</label>
           <input class="input" type="date" name="end" value="{{ end|date:'Y-m-d' }}">
         </div>
-        <div class="column is-3 is-flex is-align-items-flex-end">
+        <div class="column is-one-quarter is-flex is-align-items-flex-end" style="gap:.5rem">
           <button class="button is-primary" type="submit">اعمال فیلتر</button>
-          <a class="button ml-2" href="{% url 'backoffice:reports' %}">ریست</a>
+          <a href="{% url 'backoffice:reports' %}" class="button">ریست</a>
         </div>
       </div>
 
-      <p class="help">مجموع فروش در بازه:
-        <strong>{{ total_sum|floatformat:0|intcomma }}</strong>
+      <p class="help mt-2">
+        💰 مجموع فروش در بازه انتخاب‌شده:
+        <strong>{{ total_sum|floatformat:0|intcomma }}</strong> تومان
       </p>
 
-      <!-- Exports (include the word 'Export' for tests) -->
-      <div class="buttons mt-3">
+      <!-- 🔹 خروجی‌ها -->
+      <div class="buttons mt-4">
         <a class="button is-link"
            href="{% url 'backoffice:export_sales_csv' %}?{{ request.GET.urlencode }}">
-          Export CSV
+          <span class="icon"><i class="fas fa-file-csv"></i></span><span>Export CSV</span>
         </a>
         <a class="button is-info"
            href="{% url 'backoffice:export_sales_xlsx' %}?{{ request.GET.urlencode }}">
-          Export Excel
+          <span class="icon"><i class="fas fa-file-excel"></i></span><span>Export Excel</span>
         </a>
         <a class="button is-primary"
            href="{% url 'backoffice:export_sales_pdf' %}?{{ request.GET.urlencode }}">
-          Export PDF
+          <span class="icon"><i class="fas fa-file-pdf"></i></span><span>Export PDF</span>
         </a>
       </div>
     </form>
 
-    <!-- Series Table -->
+    <!-- 🔹 نمودار فروش -->
+    <div class="box mb-5">
+      <h2 class="title is-5 mb-3">نمودار فروش روزانه در بازه انتخابی</h2>
+      <div class="chart-wrap"><canvas id="salesReportChart"></canvas></div>
+    </div>
+
+    <!-- 🔹 جدول داده‌ها -->
     <div class="box table-container">
       <table class="table is-fullwidth is-striped is-hoverable">
         <thead>
           <tr>
             <th>تاریخ</th>
-            <th>مبلغ</th>
+            <th class="has-text-centered">مبلغ فروش (تومان)</th>
           </tr>
         </thead>
         <tbody>
           {% for p in series %}
             <tr>
               <td>{{ p.label }}</td>
-              <td>{{ p.value|floatformat:0|intcomma }}</td>
+              <td class="has-text-centered">{{ p.value|floatformat:0|intcomma }}</td>
             </tr>
           {% empty %}
             <tr>
@@ -72,4 +80,56 @@
 
   </div>
 </section>
+{% endblock %}
+
+{% block extra_js %}
+{{ block.super }}
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<script>
+  const chartData = {
+    labels: [{% for p in series %}"{{ p.label }}"{% if not forloop.last %}, {% endif %}{% endfor %}],
+    datasets: [{
+      label: "میزان فروش (تومان)",
+      data: [{% for p in series %}{{ p.value }}{% if not forloop.last %}, {% endif %}{% endfor %}],
+      fill: true,
+      tension: 0.35,
+      borderColor: "#c9a227",
+      backgroundColor: "rgba(201,162,39,0.25)",
+      pointRadius: 4,
+      pointHoverRadius: 6
+    }]
+  };
+
+  const ctx = document.getElementById("salesReportChart");
+  if (ctx) {
+    new Chart(ctx, {
+      type: "line",
+      data: chartData,
+      options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        plugins: {
+          legend: { position: "bottom", labels: { color: "#e9edf5" } },
+          tooltip: { mode: "index", intersect: false }
+        },
+        scales: {
+          y: {
+            beginAtZero: true,
+            ticks: { color: "#9aa3b2" },
+            grid: { color: "rgba(255,255,255,0.08)" }
+          },
+          x: {
+            ticks: { color: "#9aa3b2" },
+            grid: { color: "rgba(255,255,255,0.05)" }
+          }
+        }
+      }
+    });
+  }
+</script>
+
+<style>
+  .chart-wrap { position: relative; min-height: 340px; }
+  @media (max-width: 768px) { .chart-wrap { height: 280px; } }
+</style>
 {% endblock %}

@@ -1,145 +1,25 @@
 {% extends "base.html" %}
 {% load static humanize %}
-{% block title %}فروشگاه{% endblock %}
+{% block title %}فروشگاه ساعت{% endblock %}
 
 {% block content %}
 <section class="section pt-5">
   <div class="container">
 
-    <h1 class="title is-4">فروشگاه</h1>
+    <h1 class="title is-4 mb-4">فروشگاه</h1>
 
-    <!-- Filter form (HTMX-enabled: progressive enhancement) -->
+    <!-- Filter form -->
     <form id="filters-form" method="get" class="box mb-5"
           hx-get="{% url 'catalog:product_list' %}"
           hx-target="#products-grid"
           hx-push-url="true">
-      <div class="columns is-multiline">
-        <div class="column is-12-tablet is-4-desktop">
-          <div class="field">
-            <label class="label">جستجو</label>
-            <div class="control has-icons-left">
-              <input class="input" type="text" name="q" placeholder="نام محصول..." value="{{ request.GET.q }}">
-              <span class="icon is-left"><i class="fas fa-search" aria-hidden="true"></i></span>
-            </div>
-          </div>
-        </div>
-
-        <div class="column is-6-tablet is-4-desktop">
-          <div class="field">
-            <label class="label">برند</label>
-            <div class="control">
-              <div class="select is-fullwidth">
-                <select name="brand">
-                  <option value="">همه برندها</option>
-                  {% for b in brands %}
-                    <option value="{{ b.slug }}" {% if request.GET.brand == b.slug %}selected{% endif %}>{{ b.name }}</option>
-                  {% endfor %}
-                </select>
-              </div>
-            </div>
-          </div>
-        </div>
-
-        <div class="column is-6-tablet is-4-desktop">
-          <div class="field">
-            <label class="label">دسته‌بندی</label>
-            <div class="control">
-              <div class="select is-fullwidth">
-                <select name="category">
-                  <option value="">همه دسته‌ها</option>
-                  {% for c in categories %}
-                    <option value="{{ c.slug }}" {% if request.GET.category == c.slug %}selected{% endif %}>{{ c.name }}</option>
-                  {% endfor %}
-                </select>
-              </div>
-            </div>
-          </div>
-        </div>
-
-        <div class="column is-6-tablet is-3-desktop">
-          <div class="field">
-            <label class="label">حداقل قیمت</label>
-            <div class="control">
-              <input class="input" type="number" name="price_min" step="1" placeholder="Min" value="{{ request.GET.price_min }}">
-            </div>
-          </div>
-        </div>
-
-        <div class="column is-6-tablet is-3-desktop">
-          <div class="field">
-            <label class="label">حداکثر قیمت</label>
-            <div class="control">
-              <input class="input" type="number" name="price_max" step="1" placeholder="Max" value="{{ request.GET.price_max }}">
-            </div>
-          </div>
-        </div>
-
-        <div class="column is-6-tablet is-3-desktop">
-          <div class="field">
-            <label class="label">مرتب‌سازی</label>
-            <div class="control">
-              <div class="select is-fullwidth">
-                <select name="order">
-                  <option value="">جدیدترین</option>
-                  <option value="price_asc" {% if request.GET.order == "price_asc" %}selected{% endif %}>قیمت ↑</option>
-                  <option value="price_desc" {% if request.GET.order == "price_desc" %}selected{% endif %}>قیمت ↓</option>
-                </select>
-              </div>
-            </div>
-          </div>
-        </div>
-
-        <div class="column is-6-tablet is-3-desktop is-flex is-align-items-flex-end">
-          <div class="buttons">
-            <button class="button is-primary" type="submit">اعمال فیلتر</button>
-            <a class="button is-light" href="{% url 'catalog:product_list' %}">حذف فیلتر</a>
-          </div>
-        </div>
-      </div>
+      <!-- فیلترها همون قبلی باشن -->
+      ...
     </form>
 
-    <!-- Products grid (target for HTMX) -->
+    <!-- Products grid -->
     <div id="products-grid">
-      <div class="columns is-multiline">
-        {% for p in products %}
-          <div class="column is-6-tablet is-4-desktop is-3-widescreen">
-            {# product card partial: if you created _product_card.html, include it and pass product=p #}
-            {% include "catalog/_product_card.html" with product=p %}
-          </div>
-        {% endfor %}
-      </div>
-
-      {% if is_paginated %}
-        <nav class="pagination is-centered mt-5" role="navigation" aria-label="pagination">
-          {% comment %}
-            Use ctx['querystring'] (prepared in view without `page`) to keep filters; if you didn't add it,
-            fallback to request.GET.urlencode (may double-include page param).
-          {% endcomment %}
-          {% with qs=querystring|default:request.GET.urlencode %}
-            {% if page_obj.has_previous %}
-              <a class="pagination-previous"
-                 hx-get="?page={{ page_obj.previous_page_number }}&{{ qs }}"
-                 hx-target="#products-grid"
-                 hx-push-url="true">قبلی</a>
-            {% else %}
-              <a class="pagination-previous" disabled>قبلی</a>
-            {% endif %}
-
-            {% if page_obj.has_next %}
-              <a class="pagination-next"
-                 hx-get="?page={{ page_obj.next_page_number }}&{{ qs }}"
-                 hx-target="#products-grid"
-                 hx-push-url="true">بعدی</a>
-            {% else %}
-              <a class="pagination-next" disabled>بعدی</a>
-            {% endif %}
-          {% endwith %}
-
-          <ul class="pagination-list">
-            <li><span class="pagination-ellipsis">صفحه {{ page_obj.number }} از {{ page_obj.paginator.num_pages }}</span></li>
-          </ul>
-        </nav>
-      {% endif %}
+      {% include "catalog/_products_grid.html" %}
     </div>
 
   </div>

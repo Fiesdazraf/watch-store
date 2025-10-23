@@ -1,82 +1,119 @@
 {% extends "base.html" %}
-{% block title %}تاریخچه پرداخت‌ها{% endblock %}
+{% load humanize %}
+{% block title %}تاریخچه پرداخت‌ها | فروشگاه ساعت{% endblock %}
 
 {% block content %}
 <section class="section pt-5">
   <div class="container">
-    <h1 class="title is-4">تاریخچه پرداخت‌ها</h1>
+
+    <h1 class="title is-4 mb-5">💳 تاریخچه پرداخت‌ها</h1>
 
     {% if payments %}
       <div class="table-container">
-        <table class="table is-fullwidth is-striped is-hoverable is-narrow">
-          <thead>
+        <table class="table is-fullwidth is-striped is-hoverable">
+          <thead class="has-background-light">
             <tr>
-              <th>سفارش</th>
-              <th>مبلغ</th>
-              <th>واحد</th>
-              <th>روش</th>
-              <th>وضعیت</th>
-              <th>تاریخ</th>
-              <th>شناسه تراکنش</th>
-              <th></th>
+              <th>شماره سفارش</th>
+              <th class="has-text-centered">مبلغ</th>
+              <th class="has-text-centered">واحد</th>
+              <th class="has-text-centered">روش پرداخت</th>
+              <th class="has-text-centered">وضعیت</th>
+              <th class="has-text-centered">تاریخ</th>
+              <th class="has-text-centered">شناسه تراکنش</th>
+              <th class="has-text-centered">عملیات</th>
             </tr>
           </thead>
           <tbody>
-          {% for p in payments %}
+            {% for p in payments %}
             <tr>
-              <td><a href="{% url 'orders:detail' p.order.number %}">
-                {{ p.order.number }}
-              </a></td>
-              <td>{{ p.amount }}</td>
-              <td>{{ p.currency }}</td>
-              <td>{{ p.get_method_display }}</td>
               <td>
+                <a href="{% url 'orders:order_detail' p.order.number %}" class="has-text-weight-semibold">
+                  #{{ p.order.number }}
+                </a>
+              </td>
+
+              <td class="has-text-centered has-text-weight-semibold">
+                {{ p.amount|intcomma }} تومان
+              </td>
+
+              <td class="has-text-centered">{{ p.currency|default:"IRR" }}</td>
+
+              <td class="has-text-centered">{{ p.get_method_display|default:"-" }}</td>
+
+              <td class="has-text-centered">
                 <span class="tag is-light
-                  {% if p.status == 'success' %}is-success
+                  {% if p.status == 'success' or p.status == 'succeeded' %}is-success
                   {% elif p.status == 'failed' %}is-danger
                   {% elif p.status == 'canceled' %}is-warning
-                  {% else %}is-info{% endif %}">
+                  {% elif p.status == 'processing' %}is-info
+                  {% else %}is-light{% endif %}">
                   {{ p.get_status_display }}
                 </span>
               </td>
-              <td>{{ p.created_at|date:"Y-m-d H:i" }}</td>
-              <td>{{ p.transaction_id|default:"-" }}</td>
-              <td class="has-text-right">
-                <a class="button is-small" href="{% url 'orders:detail' p.order.number %}">جزئیات سفارش</a>
+
+              <td class="has-text-centered">{{ p.created_at|date:"Y-m-d H:i" }}</td>
+
+              <td class="has-text-centered">
+                <code>{{ p.transaction_id|default:"—" }}</code>
+              </td>
+
+              <td class="has-text-centered">
+                <a href="{% url 'orders:order_detail' p.order.number %}"
+                   class="button is-small is-link is-light">
+                  <span class="icon"><i class="fas fa-eye"></i></span>
+                  <span>جزئیات سفارش</span>
+                </a>
               </td>
             </tr>
-          {% endfor %}
+            {% endfor %}
           </tbody>
         </table>
       </div>
 
       {% if payments.has_other_pages %}
-      <nav class="pagination is-centered" role="navigation" aria-label="pagination">
-        {% if payments.has_previous %}
-          <a class="pagination-previous" href="?page={{ payments.previous_page_number }}">قبلی</a>
-        {% endif %}
-        {% if payments.has_next %}
-          <a class="pagination-next" href="?page={{ payments.next_page_number }}">بعدی</a>
-        {% endif %}
-        <ul class="pagination-list">
-          {% for i in payments.paginator.page_range %}
-            {% if i == payments.number %}
-              <li><a class="pagination-link is-current">{{ i }}</a></li>
-            {% else %}
-              <li><a class="pagination-link" href="?page={{ i }}">{{ i }}</a></li>
-            {% endif %}
-          {% endfor %}
-        </ul>
-      </nav>
+        <nav class="pagination is-centered mt-5" role="navigation" aria-label="pagination">
+          {% if payments.has_previous %}
+            <a class="pagination-previous" href="?page={{ payments.previous_page_number }}">قبلی</a>
+          {% else %}
+            <span class="pagination-previous is-disabled">قبلی</span>
+          {% endif %}
+          {% if payments.has_next %}
+            <a class="pagination-next" href="?page={{ payments.next_page_number }}">بعدی</a>
+          {% else %}
+            <span class="pagination-next is-disabled">بعدی</span>
+          {% endif %}
+          <ul class="pagination-list">
+            {% for i in payments.paginator.page_range %}
+              {% if i == payments.number %}
+                <li><a class="pagination-link is-current">{{ i }}</a></li>
+              {% else %}
+                <li><a class="pagination-link" href="?page={{ i }}">{{ i }}</a></li>
+              {% endif %}
+            {% endfor %}
+          </ul>
+        </nav>
       {% endif %}
+
     {% else %}
-      <div class="notification is-info">پرداختی ثبت نشده است.</div>
+      <div class="notification is-light is-info has-text-centered py-6">
+        <p class="is-size-5 mb-3">هیچ پرداختی ثبت نشده است 💳</p>
+        <a href="{% url 'catalog:product_list' %}" class="button is-link is-light">
+          بازگشت به فروشگاه
+        </a>
+      </div>
     {% endif %}
 
-    <div class="buttons mt-4">
-      <a class="button is-light" href="{% url 'orders:history' %}">سفارش‌های من</a>
-      <a class="button is-link is-light" href="{% url 'catalog:product_list' %}">ادامه خرید</a>
+    <div class="buttons mt-6">
+      <a href="{% url 'orders:order_history' %}" class="button is-light">
+        <span class="icon"><i class="fas fa-list"></i></span>
+        <span>سوابق سفارش‌ها</span>
+      </a>
+      <a href="{% url 'catalog:product_list' %}" class="button is-link is-light">
+        <span class="icon"><i class="fas fa-shopping-bag"></i></span>
+        <span>ادامه خرید</span>
+      </a>
     </div>
+
   </div>
 </section>
 {% endblock %}

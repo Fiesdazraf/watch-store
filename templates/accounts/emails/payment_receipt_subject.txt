@@ -1,1 +1,1 @@
-Payment receipt for order {{ order.number }}
+رسید پرداخت سفارش {{ order.number }}
